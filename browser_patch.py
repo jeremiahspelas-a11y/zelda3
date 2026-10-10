@@ -112,7 +112,7 @@ def patch_zelda_skin(root):
     t=t.replace(original,
         '  Module_MainRouting();\n'
         '#ifdef __EMSCRIPTEN__\n'
-        '  if (g_browser_zelda_skin && player_is_indoors <= 1 && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) {\n'
+        '  if (g_browser_zelda_skin && player_is_indoors <= 1 && (main_module_index == 7 || main_module_index == 9)) {\n'
         '    uint8 old_follower = follower_indicator;\n'
         '    follower_indicator = 1;  /* native princess sprite tiles and palette */\n'
         '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\n'
@@ -130,7 +130,7 @@ def patch_zelda_skin(root):
         'extern bool g_browser_zelda_skin;\n'
         '#endif\n'+anchor+'\n'
         '#ifdef __EMSCRIPTEN__\n'
-        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) return;\n'
+        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9)) return;\n'
         '#endif',1)
     p.write_text(t)
 
