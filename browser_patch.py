@@ -18,6 +18,26 @@ def patch(text):
     end='\n  }\n  if (g_config.autosave)'
     assert text.count(end)==1, "end of event loop anchor changed"
     text=text.replace(end, '\n#ifdef __EMSCRIPTEN__\n    emscripten_sleep(0);  /* ZELDA3_BROWSER_ASYNC_LOOP */\n#endif\n  }\n  if (g_config.autosave)',1)
+    # The browser bundle previously shipped without zelda3.ini, which leaves
+    # g_config.enable_audio=false. Force explicit browser-safe config at startup.
+    init = '  ParseConfigFile(config_file);\\n'
+    assert text.count(init)==1, 'Config startup anchor changed'
+    text=text.replace(init, init +
+       '#ifdef __EMSCRIPTEN__\\n'
+       '  g_config.enable_audio = true;\\n'
+       '  g_config.audio_freq = 44100;\\n'
+       '  g_config.audio_channels = 2;\\n'
+       '  g_config.audio_samples = 1024;\\n'
+       '  g_config.output_method = kOutputMethod_SDL;\\n'
+       '  g_config.autosave = false;\\n'
+       '  EM_ASM({ console.log("[Zelda3] Native browser audio enabled in C config"); });\\n'
+       '#endif\\n', 1)
+    device_line = '    device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);\\n'
+    assert text.count(device_line)==1, 'SDL device startup anchor changed'
+    text=text.replace(device_line,device_line+
+       '#ifdef __EMSCRIPTEN__\\n'
+       '    EM_ASM({ console.log("[Zelda3] SDL_OpenAudioDevice id:", $0, "error:", UTF8ToString($1)); }, (int)device, SDL_GetError());\\n'
+       '#endif\\n',1)
     # Browser START opens a DOM modal, but all choices affect native C state.
     start_guard = '  if (g_native_sandbox_menu_open) return false;'
     assert text.count(start_guard)==1, 'Native practice modal guard changed'
