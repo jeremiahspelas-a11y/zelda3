@@ -41,12 +41,12 @@ def patch(text):
     # The original install.py intercepts every START press. In the browser
     # this prevents title-screen advancement and file/name selection.
     # Browser uses the dedicated CO-OP SANDBOX HTML button instead.
-    intercept = '  if (j == kKeys_Controls + 5 && pressed && !g_native_sandbox_menu_open) {\\n'
+    intercept = '  if (j == kKeys_Controls + 5 && pressed && !g_native_sandbox_menu_open) {\n'
     assert text.count(intercept)==1, 'START intercept anchor changed'
-    text=text.replace(intercept, '#ifndef __EMSCRIPTEN__\\n'+intercept, 1)
-    tail_intercept = '    g_native_sandbox_start_pending |= NativeSandboxShowMenu();\\n    return;\\n  }\\n'
+    text=text.replace(intercept, '#ifndef __EMSCRIPTEN__\n'+intercept, 1)
+    tail_intercept = '    g_native_sandbox_start_pending |= NativeSandboxShowMenu();\n    return;\n  }\n'
     assert text.count(tail_intercept)==1
-    text=text.replace(tail_intercept,tail_intercept+'#endif\\n',1)
+    text=text.replace(tail_intercept,tail_intercept+'#endif\n',1)
     # Opt-in authenticity test: game code's existing Zelda follower (#1), not
     # an invented sprite. Refuses to overwrite an existing quest follower.
     include = '#include <SDL.h>\n'
