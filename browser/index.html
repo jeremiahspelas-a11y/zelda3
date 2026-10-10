@@ -97,12 +97,15 @@ document.querySelector('#practice-direct').addEventListener('click',()=>{
  window.ZeldaBrowserMenuOpen();
 });
 const controlNames=['UP','DOWN','LEFT','RIGHT','SELECT','START','B','A','Y','X','L','R'];
-const activePresses=new Map(),MIN_TAP_MS=145;
+const activePresses=new Map(),MIN_TAP_MS=170;
 function nativeControl(id,on){
  if(!running){status.textContent='Launch engine before pressing '+controlNames[id];return;}
  try{if(typeof Module._ZeldaBrowserControl!=='function')throw Error('native bridge unavailable');
- Module._ZeldaBrowserControl(id,on?1:0);
- if(on)status.textContent='SNES '+controlNames[id]+' pressed (native input)';
+ const nativeMask=Module._ZeldaBrowserControl(id,on?1:0);
+ const bitIndex=[4,5,6,7,2,3,8,0,9,1,10,11][id];
+ const confirmed=!!(nativeMask&(1<<bitIndex));
+ if(on)status.textContent='SNES '+controlNames[id]+': '+(confirmed?'CONFIRMED':'NOT REGISTERED')+' · 0x'+(nativeMask>>>0).toString(16).padStart(4,'0');
+ if(on&&!confirmed)console.warn('Controller input rejected',id,nativeMask);
  }catch(e){status.textContent='Control error: '+e.message;}
 }
 function press(id){if(activePresses.has(id))return;activePresses.set(id,{at:performance.now(),released:false});nativeControl(id,true);}
