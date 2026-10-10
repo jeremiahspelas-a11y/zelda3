@@ -1,0 +1,35 @@
+name: Browser WebAssembly feasibility build
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/browser-wasm.yml'
+permissions:
+  contents: read
+jobs:
+  wasm-compile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.15
+      - name: Compile Zelda3 engine as browser-targeted WebAssembly
+        shell: bash
+        run: |
+          set -euxo pipefail
+          emcc --version
+          make -j2 zelda3 \
+            CC=emcc \
+            CFLAGS="-O1 -I . -sUSE_SDL=2 -DSYSTEM_VOLUME_MIXER_AVAILABLE=0" \
+            SDLFLAGS="-sUSE_SDL=2 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sFORCE_FILESYSTEM=1 -lm" \
+            LDFLAGS="-sASSERTIONS=1"
+      - name: Inspect build output
+        shell: bash
+        run: |
+          file zelda3
+          ls -lh zelda3
+          echo 'COMPILE CHECK ONLY: not a verified interactive browser launcher.'
