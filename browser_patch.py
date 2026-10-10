@@ -43,7 +43,7 @@ def patch(text):
     include = '#include <SDL.h>\\n'
     assert text.count(include)==1
     text=text.replace(include, include+'#include "tagalong.h"\\n',1)
-    # Browser START opens a DOM modal, but all choices affect native C state.
+    state_anchor = '/* ZELDA3_NATIVE_SANDBOX_PHASE3 */'\n    assert text.count(state_anchor)==1\n    text=text.replace(state_anchor,state_anchor+'\n#ifdef __EMSCRIPTEN__\nstatic bool g_coop_spawned_zelda;\n#endif',1)\n    # Browser START opens a DOM modal, but all choices affect native C state.
     start_guard = '  if (g_native_sandbox_menu_open) return false;'
     assert text.count(start_guard)==1, 'Native practice modal guard changed'
     text=text.replace(start_guard, start_guard+'\n#ifdef __EMSCRIPTEN__\n  EM_ASM({ if (typeof window.ZeldaBrowserMenuOpen === "function") window.ZeldaBrowserMenuOpen(); });\n  return false;\n#else',1)
@@ -61,8 +61,8 @@ def patch(text):
         '}\n'
         'EMSCRIPTEN_KEEPALIVE void ZeldaBrowserSandboxChoice(int choice) {\n'
         '  if (choice == 0) g_native_sandbox_start_pending = true;\n'
-        '  else if (choice == 1) {\n'\n        '    if (follower_indicator == 0 && submodule_index == 0 && (main_module_index == 7 || main_module_index == 9)) {\n'\n        '      follower_indicator = 1; Follower_Initialize();\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda follower active: native sprite and follow AI; NOT independent co-op or an isolated dungeon."); });\n'\n        '    } else {\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Cannot spawn Zelda here. Enter normal gameplay with no story follower first."); });\n'\n        '    }\n'\n        '  }\n'
-        '  else if (choice == 2) {\n'\n        '    if (follower_indicator == 1) follower_indicator = 0;\n'\n        '    EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda companion test exited."); });\n'\n        '  }\n'
+        '  else if (choice == 1) {\n'\n        '    if (follower_indicator == 0 && submodule_index == 0 && (main_module_index == 7 || main_module_index == 9)) {\n'\n        '      follower_indicator = 1; Follower_Initialize(); g_coop_spawned_zelda = true;\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda follower active: native sprite and follow AI; NOT independent co-op or an isolated dungeon."); });\n'\n        '    } else {\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Cannot spawn Zelda here. Enter normal gameplay with no story follower first."); });\n'\n        '    }\n'\n        '  }\n'
+        '  else if (choice == 2) {\n'\n        '    if (g_coop_spawned_zelda && follower_indicator == 1) follower_indicator = 0; g_coop_spawned_zelda = false;\n'\n        '    EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda companion test exited."); });\n'\n        '  }\n'
         '}\n'
         '#endif\n\n'+anchor,1)
     return text
