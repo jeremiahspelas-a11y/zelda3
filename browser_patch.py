@@ -67,9 +67,13 @@ def patch(text):
     assert text.count(anchor)==1, "input bridge anchor changed"
     text=text.replace(anchor,
         '#ifdef __EMSCRIPTEN__\n'
-        'EMSCRIPTEN_KEEPALIVE void ZeldaBrowserControl(int button, int down) {\n'
-        '  if (button >= 0 && button < 12)\n'
-        '    HandleCommand(kKeys_Controls + button, down != 0);\n'
+        'EMSCRIPTEN_KEEPALIVE int ZeldaBrowserControl(int button, int down) {\n'
+        '  static const uint8 kNativeSnesBits[12] = {4,5,6,7,2,3,8,0,9,1,10,11};\n'
+        '  if (button < 0 || button >= 12) return -1;\n'
+        '  const int flag = 1 << kNativeSnesBits[button];\n'
+        '  if (down) g_input1_state |= flag;\n'
+        '  else g_input1_state &= ~flag;\n'
+        '  return g_input1_state; /* caller can verify START=0x0008 SELECT=0x0004 */\n'
         '}\n'
         'EMSCRIPTEN_KEEPALIVE int ZeldaBrowserTrainingLoad(void) {\n'
         '  if (!g_zenv.ppu || !g_zenv.sram) return 0;\n'
