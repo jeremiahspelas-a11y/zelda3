@@ -103,22 +103,22 @@ def patch_zelda_skin(root):
     anchor='void ZeldaRunGameLoop() {'
     assert t.count(anchor)==1
     t=t.replace(anchor,
-        '#ifdef __EMSCRIPTEN__\\n'
-        '#include "tagalong.h"\\n'
-        'bool g_browser_zelda_skin = true;\\n'
-        '#endif\\n'+anchor,1)
-    original='  Module_MainRouting();\\n  NMI_PrepareSprites();'
+        '#ifdef __EMSCRIPTEN__\n'
+        '#include "tagalong.h"\n'
+        'bool g_browser_zelda_skin = true;\n'
+        '#endif\n'+anchor,1)
+    original='  Module_MainRouting();\n  NMI_PrepareSprites();'
     assert t.count(original)==1
     t=t.replace(original,
-        '  Module_MainRouting();\\n'
-        '#ifdef __EMSCRIPTEN__\\n'
-        '  if (g_browser_zelda_skin && player_is_indoors <= 1 && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) {\\n'
-        '    uint8 old_follower = follower_indicator;\\n'
-        '    follower_indicator = 1;  /* native princess sprite tiles and palette */\\n'
-        '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\\n'
-        '    follower_indicator = old_follower;\\n'
-        '  }\\n'
-        '#endif\\n'
+        '  Module_MainRouting();\n'
+        '#ifdef __EMSCRIPTEN__\n'
+        '  if (g_browser_zelda_skin && player_is_indoors <= 1 && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) {\n'
+        '    uint8 old_follower = follower_indicator;\n'
+        '    follower_indicator = 1;  /* native princess sprite tiles and palette */\n'
+        '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\n'
+        '    follower_indicator = old_follower;\n'
+        '  }\n'
+        '#endif\n'
         '  NMI_PrepareSprites();',1)
     p.write_text(t)
     p=root/'src'/'player_oam.c'
@@ -126,11 +126,11 @@ def patch_zelda_skin(root):
     anchor='void LinkOam_Main() {'
     assert t.count(anchor)==1
     t=t.replace(anchor,
-        '#ifdef __EMSCRIPTEN__\\n'
-        'extern bool g_browser_zelda_skin;\\n'
-        '#endif\\n'+anchor+'\\n'
-        '#ifdef __EMSCRIPTEN__\\n'
-        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) return;\\n'
+        '#ifdef __EMSCRIPTEN__\n'
+        'extern bool g_browser_zelda_skin;\n'
+        '#endif\n'+anchor+'\n'
+        '#ifdef __EMSCRIPTEN__\n'
+        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) return;\n'
         '#endif',1)
     p.write_text(t)
 
