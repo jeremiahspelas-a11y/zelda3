@@ -92,15 +92,26 @@ document.querySelector('#practice-direct').addEventListener('click',()=>{
  if(!running){status.textContent='Start the game first.';return;}
  window.ZeldaBrowserMenuOpen();
 });
-const held=new Set();
-function ctrl(i,on){if(!running)return; if(typeof Module._ZeldaBrowserControl!=='function'){status.textContent='Native controls are not exported';return;}
- Module._ZeldaBrowserControl(i,on?1:0);}
+const controlNames=['UP','DOWN','LEFT','RIGHT','SELECT','START','B','A','Y','X','L','R'];
+const activePresses=new Map(),MIN_TAP_MS=145;
+function nativeControl(id,on){
+ if(!running){status.textContent='Launch engine before pressing '+controlNames[id];return;}
+ try{if(typeof Module._ZeldaBrowserControl!=='function')throw Error('native bridge unavailable');
+ Module._ZeldaBrowserControl(id,on?1:0);
+ if(on)status.textContent='SNES '+controlNames[id]+' pressed (native input)';
+ }catch(e){status.textContent='Control error: '+e.message;}
+}
+function press(id){if(activePresses.has(id))return;activePresses.set(id,{at:performance.now(),released:false});nativeControl(id,true);}
+function release(id){const p=activePresses.get(id);if(!p||p.released)return;p.released=true;
+ setTimeout(()=>{if(activePresses.get(id)===p){activePresses.delete(id);nativeControl(id,false);}},Math.max(0,MIN_TAP_MS-(performance.now()-p.at)));
+}
 for(const btn of document.querySelectorAll('[data-b]')){
  const id=Number(btn.dataset.b);
- const down=e=>{e.preventDefault();if(!held.has(id)){held.add(id);btn.setPointerCapture?.(e.pointerId);ctrl(id,true);}};
- const up=e=>{e.preventDefault();if(held.delete(id))ctrl(id,false);};
- btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);
- btn.addEventListener('lostpointercapture',()=>{if(held.delete(id))ctrl(id,false);});
+ btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture?.(e.pointerId);press(id);});
+ btn.addEventListener('pointerup',e=>{e.preventDefault();release(id);});
+ btn.addEventListener('pointercancel',e=>{e.preventDefault();release(id);});
+ btn.addEventListener('lostpointercapture',()=>release(id));
+ btn.addEventListener('contextmenu',e=>e.preventDefault());
 }
-window.addEventListener('blur',()=>{for(const id of held)ctrl(id,false);held.clear();});
+window.addEventListener('blur',()=>{for(const id of activePresses.keys())release(id);});
 </script><script src="zelda3.js"></script></body></html>
