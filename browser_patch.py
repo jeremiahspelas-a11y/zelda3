@@ -94,11 +94,52 @@ def patch(text):
         '#endif\n\n'+anchor,1)
     return text
 
+
+def patch_zelda_skin(root):
+    """Use Zelda's *native* follower artwork to replace Link's world sprite.
+    All game logic still belongs to Link; title menus are left intact."""
+    p=root/'src'/'zelda_rtl.c'
+    t=p.read_text()
+    anchor='void ZeldaRunGameLoop() {'
+    assert t.count(anchor)==1
+    t=t.replace(anchor,
+        '#ifdef __EMSCRIPTEN__\\n'
+        '#include "tagalong.h"\\n'
+        'bool g_browser_zelda_skin = true;\\n'
+        '#endif\\n'+anchor,1)
+    original='  Module_MainRouting();\\n  NMI_PrepareSprites();'
+    assert t.count(original)==1
+    t=t.replace(original,
+        '  Module_MainRouting();\\n'
+        '#ifdef __EMSCRIPTEN__\\n'
+        '  if (g_browser_zelda_skin && player_is_indoors <= 1 && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) {\\n'
+        '    uint8 old_follower = follower_indicator;\\n'
+        '    follower_indicator = 1;  /* native princess sprite tiles and palette */\\n'
+        '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\\n'
+        '    follower_indicator = old_follower;\\n'
+        '  }\\n'
+        '#endif\\n'
+        '  NMI_PrepareSprites();',1)
+    p.write_text(t)
+    p=root/'src'/'player_oam.c'
+    t=p.read_text()
+    anchor='void LinkOam_Main() {'
+    assert t.count(anchor)==1
+    t=t.replace(anchor,
+        '#ifdef __EMSCRIPTEN__\\n'
+        'extern bool g_browser_zelda_skin;\\n'
+        '#endif\\n'+anchor+'\\n'
+        '#ifdef __EMSCRIPTEN__\\n'
+        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9) && follower_indicator == 0) return;\\n'
+        '#endif',1)
+    p.write_text(t)
+
 def main():
     root=Path(sys.argv[1])
     path=root/'src'/'main.c'
     original=path.read_text()
     path.write_text(patch(original))
+    patch_zelda_skin(root)
     print('Browser event yield and native input bridge installed.')
 if __name__=='__main__':
     main()
