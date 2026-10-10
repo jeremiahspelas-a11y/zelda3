@@ -32,8 +32,9 @@ start.addEventListener('click',()=>{
  if(!engineReady||!assetBytes||running)return;
  try {
   Module.FS.writeFile('/zelda3_assets.dat',assetBytes);
+  if(trainingRoomBytes){Module.FS.mkdirTree('/saves/ref');Module.FS.writeFile("/saves/ref/Chapter 1 - Zelda's Rescue.sav", trainingRoomBytes);Module.FS.writeFile('/training-room.sav',trainingRoomBytes);}
   running=true;start.disabled=true;document.querySelector('#assets').disabled=true;
-  status.textContent='Starting original Zelda3 engine…';
+  status.textContent=trainingRoomBytes?'Booting directly into original castle test scene…':'Starting original Zelda3 engine…';
   void unlockAudio(); Module.callMain([]); setTimeout(()=>void unlockAudio(),150);
  }catch(e){status.textContent='Startup error: '+e.message;console.error(e);}
 });
