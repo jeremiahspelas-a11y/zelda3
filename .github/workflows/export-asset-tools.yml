@@ -19,4 +19,5 @@ jobs:
           name: zelda3-extraction-tools-code-only
           path: |
             assets/
+            other/3x5_font.png
           retention-days: 1
