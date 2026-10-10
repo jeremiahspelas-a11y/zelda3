@@ -15,7 +15,7 @@
 <script>
 let engineReady=false,running=false,assetBytes=null;
 const status=document.querySelector('#status'),start=document.querySelector('#start');
-const Module={canvas:document.querySelector('#canvas'),noInitialRun:true,
+var Module={canvas:document.querySelector('#canvas'),noInitialRun:true,
   print:(...args)=>{console.log(...args);},
   printErr:(...args)=>{console.error(...args);status.textContent=args.join(' ');},
   onRuntimeInitialized(){engineReady=true;status.textContent='Engine loaded. Choose locally extracted zelda3_assets.dat.';start.disabled=!assetBytes;},
