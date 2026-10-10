@@ -31,3 +31,18 @@ __pycache__
 /sprites-gfx
 /glsl-shaders
 /token.txt
+
+# Native sandbox: ROMs/assets and local saves never belong in commits.
+*.[sS][fF][cC]
+*.[sS][mM][cC]
+*.[rR][oO][mM]
+*.[sS][rR][mM]
+*.o
+**/zelda3_assets.dat
+/assets/sprites/*.png
+/assets/sound/
+/src/main.c.before_native_sandbox_phase3
+/tests/native_sandbox_test
+/tests/native_sandbox_main.inc
+/dist/
+/dependencies.txt
