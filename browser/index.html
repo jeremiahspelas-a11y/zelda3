@@ -40,7 +40,19 @@ start.addEventListener('click',()=>{
 const dlg=document.querySelector('#sandbox-dialog');
 window.ZeldaBrowserMenuOpen=()=>{dlg.hidden=false;status.textContent='Co-op prototype options.';};
 window.ZeldaBrowserCoopStatus=(message)=>{status.textContent=message;};
-for(const b of dlg.querySelectorAll('[data-choice]'))b.addEventListener('click',()=>{const choice=Number(b.dataset.choice);dlg.hidden=true; if(typeof Module._ZeldaBrowserSandboxChoice==='function')Module._ZeldaBrowserSandboxChoice(choice);else status.textContent='Native practice action not exported';if(choice!==1)status.textContent=choice===2?'Exited companion test.':'Native game running.';});
+for(const b of dlg.querySelectorAll('[data-choice]')) b.addEventListener('click',()=>{
+ const choice=Number(b.dataset.choice);
+ if(typeof Module._ZeldaBrowserSandboxChoice!=='function'){
+  status.textContent='CO-OP ERROR: native bridge is unavailable. Please report this message.';return;
+ }
+ let result;
+ try {result=Module._ZeldaBrowserSandboxChoice(choice);}catch(e){status.textContent='CO-OP ERROR: '+e.message;return;}
+ if(choice===1){
+  const messages={1:'Zelda follower activated. Look beside Link and walk a few steps. This is not yet independent co-op.',21:'Cannot activate: another story follower is already present.',22:'Cannot activate during a transition or menu. Return to gameplay.',23:'Cannot activate in this game mode. Reach normal exploration first.'};
+  status.textContent=messages[result]||('Native companion returned code '+result);
+ }else{status.textContent=choice===2?'Companion test exited.':'Returned to Zelda3.';}
+ dlg.hidden=true;
+});
 async function unlockAudio(){try {
  const ctx=globalThis.SDL2?.audioContext||globalThis.SDL?.audioContext||Module.SDL2?.audioContext;
  if(ctx){if(ctx.state==='suspended')await ctx.resume();return ctx.state;}
