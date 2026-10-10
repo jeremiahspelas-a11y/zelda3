@@ -65,7 +65,18 @@ def rewrite_message(text, num):
     changed = changed.replace("[Name]", "Zelda")
 
     # Some English pronouns require context, not global replacement.
-    if num == 28:
+    if num == 44:
+        changed = changed.replace("young[3]man", "young[3]woman")
+    elif num == 48:
+        changed = changed.replace("wanted man!", "wanted woman!")
+    elif num == 51:
+        changed = changed.replace("young[Scroll]man", "young[Scroll]woman")
+    elif num == 58:
+        changed = changed.replace("young man!", "young woman!")
+        changed = changed.replace("young[Waitkey]man", "young[Waitkey]woman")
+    elif num == 182:
+        changed = changed.replace("his form", "their form")
+    elif num == 28:
         changed = changed.replace("abducted her", "abducted him")
         changed = changed.replace("taken her", "taken him")
         changed = changed.replace("find her", "find him")
@@ -74,6 +85,7 @@ def rewrite_message(text, num):
                                   "other missing[Scroll]heirs")
     elif num == 60:
         changed = changed.replace("see him!", "see her!")
+        changed = changed.replace("[LinkL][LinkR]", "")  # remove wrong face portrait
     elif num == 167:
         changed = changed.replace("bad[Scroll]guy", "bad[Scroll]person")
     elif num == 309:
