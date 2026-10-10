@@ -51,6 +51,7 @@ jobs:
           file zelda3.wasm
           mkdir -p dist
           cp browser/index.html zelda3.js zelda3.wasm dist/
+          cp "saves/ref/Chapter 1 - Zelda\'s Rescue.sav" dist/training-room.sav
           printf '%s\n' 'Experimental authentic Zelda3 engine port. Extract zelda3_assets.dat from your own legally held ROM locally. Never commit ROM or assets.' > dist/README.txt
       - name: Bundle single-file native Android browser trial
         run: |
