@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Zelda3 - Native Browser Test</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101a16;color:#f4e5b6;font:15px system-ui,sans-serif}main{margin:auto;max-width:700px;padding:12px;min-height:100vh;display:flex;flex-direction:column;gap:10px}h1{font-size:17px;margin:0}p{margin:3px 0;color:#c9d0b7;font-size:13px}#view{aspect-ratio:256/224;background:#050705;display:grid;place-items:center;min-height:180px}canvas{width:100%;height:100%;image-rendering:pixelated;object-fit:contain}#pad{flex:1;min-height:215px;display:flex;justify-content:space-between;align-items:center;touch-action:none;user-select:none;gap:12px}button{touch-action:none;border:1px solid #a5a083;background:#334d3b;color:white;border-radius:12px;min-height:47px;min-width:48px;padding:8px 12px;font-size:15px;font-weight:700}button:active{background:#6a816f}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;align-items:center}.grid .empty{visibility:hidden}.action{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}input{max-width:100%}#start{background:#87682b}#start:disabled{opacity:.45}@media(max-width:380px){main{padding:7px}button{min-width:43px;padding:6px}}
+</style></head><body><main><h1>THE LEGEND OF ZELDA · Native Engine Test</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
+<section class="row"><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="start" disabled>Start native engine</button></section>
+<div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
+<div id="pad"><div class="grid" aria-label="Directional controls">
+<button class="empty">·</button><button data-b="0">▲</button><button class="empty">·</button>
+<button data-b="2">◀</button><button class="empty">·</button><button data-b="3">▶</button>
+<button class="empty">·</button><button data-b="1">▼</button><button class="empty">·</button></div>
+<div class="action"><button data-b="8">Y</button><button data-b="6">X</button><button data-b="7">B</button><button data-b="9">A</button></div></div>
+<div class="row"><button data-b="4">SELECT</button><button data-b="5">START</button><button data-b="10">L</button><button data-b="11">R</button></div>
+<p>This test runs C-to-WebAssembly Zelda3, not an illustrated substitute. It requires the game data extracted privately from a legally held US Zelda3 ROM. No ROM or proprietary game data is included in the repository or build artifact. Browser runtime and menu compatibility are experimental.</p>
+</main>
+<script>
+let engineReady=false,running=false,assetBytes=null;
+const status=document.querySelector('#status'),start=document.querySelector('#start');
+const Module={canvas:document.querySelector('#canvas'),noInitialRun:true,
+  print:(...args)=>{console.log(...args);},
+  printErr:(...args)=>{console.error(...args);status.textContent=args.join(' ');},
+  onRuntimeInitialized(){engineReady=true;status.textContent='Engine loaded. Choose locally extracted zelda3_assets.dat.';start.disabled=!assetBytes;},
+  onAbort(why){status.textContent='Native engine failed: '+why;}
+};
+document.querySelector('#assets').addEventListener('change',async e=>{
+ const f=e.target.files?.[0];if(!f)return;
+ if(f.size<100000||f.size>80000000){status.textContent='Unexpected asset file size; select zelda3_assets.dat.';return;}
+ assetBytes=new Uint8Array(await f.arrayBuffer());status.textContent='Assets selected locally ('+f.size+' bytes).';start.disabled=!engineReady;
+});
+start.addEventListener('click',()=>{
+ if(!engineReady||!assetBytes||running)return;
+ try {
+  Module.FS.writeFile('/zelda3_assets.dat',assetBytes);
+  running=true;start.disabled=true;document.querySelector('#assets').disabled=true;
+  status.textContent='Starting original Zelda3 engine…';
+  Module.callMain([]);
+ }catch(e){status.textContent='Startup error: '+e.message;console.error(e);}
+});
+const held=new Set();
+function ctrl(i,on){if(!running||typeof Module._ZeldaBrowserControl!=='function')return;
+ Module._ZeldaBrowserControl(i,on?1:0);}
+for(const btn of document.querySelectorAll('[data-b]')){
+ const id=Number(btn.dataset.b);
+ const down=e=>{e.preventDefault();if(!held.has(id)){held.add(id);btn.setPointerCapture?.(e.pointerId);ctrl(id,true);}};
+ const up=e=>{e.preventDefault();if(held.delete(id))ctrl(id,false);};
+ btn.addEventListener('pointerdown',down);btn.addEventListener('pointerup',up);btn.addEventListener('pointercancel',up);
+ btn.addEventListener('lostpointercapture',()=>{if(held.delete(id))ctrl(id,false);});
+}
+window.addEventListener('blur',()=>{for(const id of held)ctrl(id,false);held.clear();});
+</script><script src="zelda3.js"></script></body></html>
