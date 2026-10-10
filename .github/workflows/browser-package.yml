@@ -18,6 +18,15 @@ jobs:
           fetch-depth: 0
       - name: Confirm public repository contains no ROM or extracted game assets
         run: python3 scripts/check_no_game_assets.py
+      - name: Fail fast on Python patch and HTML controller syntax
+        run: |
+          python3 -m py_compile browser_patch.py browser/package_single_html.py
+          python3 - <<'PY'
+          from pathlib import Path
+          page=Path('browser/index.html').read_text()
+          assert page.count('id="system-controls"') == 1, 'duplicate controls'
+          assert 'ZeldaBrowserCoopStatus' in page
+          PY
       - name: Install Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14
         with:
