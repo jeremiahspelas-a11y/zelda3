@@ -97,7 +97,7 @@ def patch(text):
 
 def patch_zelda_skin(root):
     """Use Zelda's *native* follower artwork to replace Link's world sprite.
-    All game logic still belongs to Link; title menus are left intact."""
+    All game logic still belongs to Link; title menus are left intact.\n    The vanilla follower only has a limited set of Zelda frames; full animation replacement requires a dedicated sprite sheet."""
     p=root/'src'/'zelda_rtl.c'
     t=p.read_text()
     anchor='static void ZeldaRunGameLoop() {'
