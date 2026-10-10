@@ -13,7 +13,7 @@ page = (root / "browser" / "index.html").read_text()
 patch = (root / "browser_patch.py").read_text()
 
 buttons = [(int(n), name) for n, name in re.findall(
-    r'<button[^>]*data-b="(\\d+)"[^>]*>([^<]+)</button>', page)]
+    r'<button[^>]*data-b="(\d+)"[^>]*>([^<]+)</button>', page)]
 assert len(buttons) == 12, buttons
 assert sorted(n for n, _ in buttons) == list(range(12))
 assert dict(buttons)[5] == "START"
@@ -24,7 +24,7 @@ assert page.count('id="snes-select"') == 1
 assert page.count('id="start"') == 0  # No ambiguous engine/START identity
 
 # Native bit mapping follows src/main.c's kKbdRemap command offset.
-native_bits = re.search(r'kNativeSnesBits\\[12\\] = \\{([^}]+)\\}', patch)
+native_bits = re.search(r'kNativeSnesBits\[12\] = \{([^}]+)\}', patch)
 assert native_bits, "Expected explicit native SNES input table"
 parsed = [int(v.strip()) for v in native_bits.group(1).split(',')]
 expected = [4, 5, 6, 7, 2, 3, 8, 0, 9, 1, 10, 11]
