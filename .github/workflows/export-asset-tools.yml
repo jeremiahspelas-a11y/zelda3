@@ -1,0 +1,22 @@
+name: Export Zelda3 open-source asset tools (no game data)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/export-asset-tools.yml'
+permissions:
+  contents: read
+jobs:
+  export-scripts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository contains no ROM or extracted game assets
+        run: python3 scripts/check_no_game_assets.py
+      - name: Export only open-source extraction scripts
+        uses: actions/upload-artifact@v4
+        with:
+          name: zelda3-extraction-tools-code-only
+          path: |
+            assets/
+          retention-days: 1
