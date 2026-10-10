@@ -1,10 +1,10 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Zelda3 - Native Browser Test</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#101a16;color:#f4e5b6;font:15px system-ui,sans-serif}main{margin:auto;max-width:700px;padding:12px;min-height:100vh;display:flex;flex-direction:column;gap:10px}h1{font-size:17px;margin:0}p{margin:3px 0;color:#c9d0b7;font-size:13px}#view{aspect-ratio:256/224;background:#050705;display:grid;place-items:center;min-height:180px}canvas{width:100%;height:100%;image-rendering:pixelated;object-fit:contain}#pad{flex:1;min-height:215px;display:flex;justify-content:space-between;align-items:center;touch-action:none;user-select:none;gap:12px}button{touch-action:none;border:1px solid #a5a083;background:#334d3b;color:white;border-radius:12px;min-height:47px;min-width:48px;padding:8px 12px;font-size:15px;font-weight:700}button:active{background:#6a816f}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;align-items:center}.grid .empty{visibility:hidden}.action{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}input{max-width:100%}#start{background:#87682b}#start:disabled{opacity:.45}@media(max-width:380px){main{padding:7px}button{min-width:43px;padding:6px}}
-</style></head><body><main><h1>THE LEGEND OF ZELDA · Native Engine Test</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
-<section class="row"><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="start" disabled>Start native engine</button></section>
+main{height:100dvh;min-height:0;overflow:hidden;gap:4px;padding:5px}h1{font-size:14px;text-align:center}#status{font-size:11px;max-height:28px;overflow:auto}#view{min-height:0;flex:0 1 auto;aspect-ratio:auto;height:min(44dvh,calc((100vw - 12px)*.875));overflow:hidden}#system-controls{gap:8px}#system-controls button{min-height:38px;flex:1}#system-controls button[data-b="5"]{background:#87682b}#pad{min-height:0;flex:1}.details{display:none}#sandbox-dialog[hidden]{display:none}@media(max-height:700px){#view{height:39dvh}}</style></head><body><main><h1>ZELDA III · browser trial</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
+<section class="row"><button id="sound" type="button">♫ SOUND ON</button><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="start" disabled>Start native engine</button></section>
 <section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Original Zelda3 — Practice</h2><p>The current real Zelda room stays loaded. Practice mutes the game's audio and is NOT save-isolated.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Practice current room</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
-<div id="pad"><div class="grid" aria-label="Directional controls">
+<div class="row" id="system-controls"><button data-b="4">SELECT</button><button data-b="5">START</button><button data-b="10">L</button><button data-b="11">R</button></div><div id="pad"><div class="grid" aria-label="Directional controls">
 <button class="empty">·</button><button data-b="0">▲</button><button class="empty">·</button>
 <button data-b="2">◀</button><button class="empty">·</button><button data-b="3">▶</button>
 <button class="empty">·</button><button data-b="1">▼</button><button class="empty">·</button></div>
@@ -32,12 +32,14 @@ start.addEventListener('click',()=>{
   Module.FS.writeFile('/zelda3_assets.dat',assetBytes);
   running=true;start.disabled=true;document.querySelector('#assets').disabled=true;
   status.textContent='Starting original Zelda3 engine…';
-  Module.callMain([]);
+  Module.callMain([]); void unlockAudio(); setTimeout(()=>void unlockAudio(),150);
  }catch(e){status.textContent='Startup error: '+e.message;console.error(e);}
 });
 const dlg=document.querySelector('#sandbox-dialog');
 window.ZeldaBrowserMenuOpen=()=>{dlg.hidden=false;status.textContent='Native Zelda3 practice menu open.';};
 for(const b of dlg.querySelectorAll('[data-choice]'))b.addEventListener('click',()=>{const choice=Number(b.dataset.choice);dlg.hidden=true; if(typeof Module._ZeldaBrowserSandboxChoice==='function')Module._ZeldaBrowserSandboxChoice(choice);status.textContent=choice===1?'Practice active (same original room); game audio muted.':choice===2?'Practice exited.':'Native game running.';});
+async function unlockAudio(){try{const ctx=Module.SDL2?.audioContext;if(ctx?.state==='suspended')await ctx.resume();return ctx?.state||'not initialized';}catch(e){return 'blocked';}}
+document.querySelector('#sound').addEventListener('click',async()=>{status.textContent='Sound status: '+await unlockAudio();});
 const held=new Set();
 function ctrl(i,on){if(!running||typeof Module._ZeldaBrowserControl!=='function')return;
  Module._ZeldaBrowserControl(i,on?1:0);}
