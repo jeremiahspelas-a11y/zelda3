@@ -100,42 +100,73 @@ def patch(text):
 
 
 def patch_zelda_skin(root):
-    """Use Zelda's *native* follower artwork to replace Link's world sprite.
-    All game logic still belongs to Link; title menus are left intact.\n    The vanilla follower only has a limited set of Zelda frames; full animation replacement requires a dedicated sprite sheet."""
-    p=root/'src'/'zelda_rtl.c'
-    t=p.read_text()
-    anchor='static void ZeldaRunGameLoop() {'
-    assert t.count(anchor)==1
-    t=t.replace(anchor,
-        '#ifdef __EMSCRIPTEN__\n'
-        '#include "tagalong.h"\n'
-        'bool g_browser_zelda_skin = true;\n'
-        '#endif\n'+anchor,1)
-    original='  Module_MainRouting();\n  NMI_PrepareSprites();'
-    assert t.count(original)==1
-    t=t.replace(original,
-        '  Module_MainRouting();\n'
-        '#ifdef __EMSCRIPTEN__\n'
-        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9 || link_player_handler_state == kPlayerState_AsleepInBed)) {\n'
-        '    uint8 old_follower = follower_indicator;\n'
-        '    follower_indicator = 1;  /* native princess sprite tiles and palette */\n'
-        '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\n'
-        '    follower_indicator = old_follower;\n'
-        '  }\n'
-        '#endif\n'
-        '  NMI_PrepareSprites();',1)
+    """Native body swap: playable hero is rendered using the Princess Zelda
+    follower tiles and animation, including the opening bed/player OAM path.
+    In the rescue sequence the actual Zelda follower slot renders Link as NPC.
+    Gameplay, collision, and title screens remain handled by Zelda3 C."""
+    # Retain the native sprite artists' original tile drawing routines, but
+    # redirect their OAM calls instead of overlaying one sprite after each frame.
+    p = root / 'src' / 'zelda_rtl.c'
+    t = p.read_text()
+    anchor = 'static void ZeldaRunGameLoop() {'
+    assert t.count(anchor) == 1
+    t = t.replace(anchor,
+       '#ifdef __EMSCRIPTEN__\n'
+       'bool g_browser_zelda_skin = true;\n'
+       '#endif\n'+anchor, 1)
     p.write_text(t)
-    p=root/'src'/'player_oam.c'
-    t=p.read_text()
-    anchor='void LinkOam_Main() {'
-    assert t.count(anchor)==1
-    t=t.replace(anchor,
-        '#ifdef __EMSCRIPTEN__\n'
-        'extern bool g_browser_zelda_skin;\n'
-        '#endif\n'+anchor+'\n'
-        '#ifdef __EMSCRIPTEN__\n'
-        '  if (g_browser_zelda_skin && (main_module_index == 7 || main_module_index == 9 || link_player_handler_state == kPlayerState_AsleepInBed)) return;\n'
-        '#endif',1)
+
+    p = root / 'src' / 'player_oam.c'
+    t = p.read_text()
+    anchor = 'void LinkOam_Main() {'
+    assert t.count(anchor) == 1
+    t = t.replace(anchor,
+       '#ifdef __EMSCRIPTEN__\n'
+       '#include "tagalong.h"\n'
+       'extern bool g_browser_zelda_skin;\n'
+       'bool g_browser_rendering_hero;\n'
+       '#endif\n'
+       +anchor+'\n'
+       '#ifdef __EMSCRIPTEN__\n'
+       '  if (g_browser_zelda_skin) {\n'
+       '    /* One call per native player drawing, including the starting bed. */\n'
+       '    uint8 prev = follower_indicator;\n'
+       '    g_browser_rendering_hero = true;\n'
+       '    follower_indicator = 1;\n'
+       '    Follower_AnimateMovement_preserved((link_direction_facing >> 1) & 3, link_x_coord, link_y_coord);\n'
+       '    follower_indicator = prev;\n'
+       '    g_browser_rendering_hero = false;\n'
+       '    return; /* no original Link body can leak through this path */\n'
+       '  }\n'
+       '#endif', 1)
+    p.write_text(t)
+
+    p = root / 'src' / 'tagalong.c'
+    t = p.read_text()
+    anchor = 'void Follower_AnimateMovement_preserved(uint8 ain, uint16 xin, uint16 yin) {'
+    assert t.count(anchor) == 1
+    t = t.replace(anchor,
+       '#ifdef __EMSCRIPTEN__\n'
+       '#include "player_oam.h"\n'
+       'extern bool g_browser_zelda_skin;\n'
+       'extern bool g_browser_rendering_hero;\n'
+       '#endif\n'+anchor+'\n'
+       '#ifdef __EMSCRIPTEN__\n'
+       '  if (g_browser_zelda_skin && follower_indicator == 1 && !g_browser_rendering_hero) {\n'
+       '    /* Princess follower is now Prince Link. Borrow the original hero OAM\n'
+       '       animator at the follower coordinates, then restore game state. */\n'
+       '    uint16 oldx = link_x_coord, oldy = link_y_coord;\n'
+       '    uint8 oldface = link_direction_facing;\n'
+       '    g_browser_zelda_skin = false;\n'
+       '    link_x_coord = xin; link_y_coord = yin;\n'
+       '    link_direction_facing = (ain & 3) << 1;\n'
+       '    LinkOam_Main();\n'
+       '    link_direction_facing = oldface;\n'
+       '    link_x_coord = oldx; link_y_coord = oldy;\n'
+       '    g_browser_zelda_skin = true;\n'
+       '    return;\n'
+       '  }\n'
+       '#endif', 1)
     p.write_text(t)
 
 def main():
