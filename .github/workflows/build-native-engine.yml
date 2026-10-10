@@ -1,0 +1,28 @@
+name: Native Zelda3 build smoke test
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-native:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SDL2 build dependency
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libsdl2-dev build-essential
+      - name: Compile the original C engine without ROM files
+        run: make zelda3 -j2
+      - name: Inspect build output
+        run: |
+          test -x zelda3
+          file zelda3
+      - name: Preserve engine executable for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: zelda3-original-engine-linux
+          path: zelda3
+          retention-days: 7
