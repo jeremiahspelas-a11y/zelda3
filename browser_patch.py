@@ -34,7 +34,12 @@ def patch(text):
         '  if (button >= 0 && button < 12)\n'
         '    HandleCommand(kKeys_Controls + button, down != 0);\n'
         '}\n'
-        'EMSCRIPTEN_KEEPALIVE void ZeldaBrowserSandboxChoice(int choice) {\n'\n        '  if (choice == 0) g_native_sandbox_start_pending = true;\n'\n        '  else if (choice == 1) NativeSandboxSetActive(true);\n'\n        '  else if (choice == 2) NativeSandboxSetActive(false);\n'\n        '}\n'\n        '#endif\n\n'+anchor,1)
+        'EMSCRIPTEN_KEEPALIVE void ZeldaBrowserSandboxChoice(int choice) {\n'
+        '  if (choice == 0) g_native_sandbox_start_pending = true;\n'
+        '  else if (choice == 1) NativeSandboxSetActive(true);\n'
+        '  else if (choice == 2) NativeSandboxSetActive(false);\n'
+        '}\n'
+        '#endif\n\n'+anchor,1)
     return text
 
 def main():
