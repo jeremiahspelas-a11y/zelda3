@@ -100,7 +100,7 @@ def patch_zelda_skin(root):
     All game logic still belongs to Link; title menus are left intact."""
     p=root/'src'/'zelda_rtl.c'
     t=p.read_text()
-    anchor='void ZeldaRunGameLoop() {'
+    anchor='static void ZeldaRunGameLoop() {'
     assert t.count(anchor)==1
     t=t.replace(anchor,
         '#ifdef __EMSCRIPTEN__\n'
