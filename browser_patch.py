@@ -18,7 +18,7 @@ def patch(text):
     end='\n  }\n  if (g_config.autosave)'
     assert text.count(end)==1, "end of event loop anchor changed"
     text=text.replace(end, '\n#ifdef __EMSCRIPTEN__\n    emscripten_sleep(0);  /* ZELDA3_BROWSER_ASYNC_LOOP */\n#endif\n  }\n  if (g_config.autosave)',1)
-    # Call the real native input handler, not a reimplementation of Zelda logic.
+    # Browser-native START choice uses SDL host's real sandbox state, without SDL message boxes.\n    start_guard = '  if (g_native_sandbox_menu_open) return false;'\n    assert text.count(start_guard)==1, 'Native practice modal guard changed'\n    text=text.replace(start_guard, start_guard+'\\n#ifdef __EMSCRIPTEN__\\n  EM_ASM({ if (typeof window.ZeldaBrowserMenuOpen === "function") window.ZeldaBrowserMenuOpen(); });\\n  return false;\\n#else',1)\n    tail='  return choice == 0;\\n}'\n    assert text.count(tail)==1, 'Native practice modal tail changed'\n    text=text.replace(tail,'  return choice == 0;\\n#endif\\n}',1)\n    # Call the real native input handler, not a reimplementation of Zelda logic.
     anchor='void ZeldaApuLock() {'
     assert text.count(anchor)==1, "input bridge anchor changed"
     text=text.replace(anchor,
