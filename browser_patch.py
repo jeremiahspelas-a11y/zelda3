@@ -38,6 +38,11 @@ def patch(text):
        '#ifdef __EMSCRIPTEN__\n'
        '    EM_ASM({ console.log("[Zelda3] SDL_OpenAudioDevice id:", $0, "error:", UTF8ToString($1)); }, (int)device, SDL_GetError());\n'
        '#endif\n',1)
+    # Opt-in authenticity test: game code's existing Zelda follower (#1), not
+    # an invented sprite. Refuses to overwrite an existing quest follower.
+    include = '#include <SDL.h>\\n'
+    assert text.count(include)==1
+    text=text.replace(include, include+'#include "tagalong.h"\\n',1)
     # Browser START opens a DOM modal, but all choices affect native C state.
     start_guard = '  if (g_native_sandbox_menu_open) return false;'
     assert text.count(start_guard)==1, 'Native practice modal guard changed'
@@ -56,8 +61,8 @@ def patch(text):
         '}\n'
         'EMSCRIPTEN_KEEPALIVE void ZeldaBrowserSandboxChoice(int choice) {\n'
         '  if (choice == 0) g_native_sandbox_start_pending = true;\n'
-        '  else if (choice == 1) NativeSandboxSetActive(true);\n'
-        '  else if (choice == 2) NativeSandboxSetActive(false);\n'
+        '  else if (choice == 1) {\n'\n        '    if (follower_indicator == 0 && submodule_index == 0 && (main_module_index == 7 || main_module_index == 9)) {\n'\n        '      follower_indicator = 1; Follower_Initialize();\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda follower active: native sprite and follow AI; NOT independent co-op or an isolated dungeon."); });\n'\n        '    } else {\n'\n        '      EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Cannot spawn Zelda here. Enter normal gameplay with no story follower first."); });\n'\n        '    }\n'\n        '  }\n'
+        '  else if (choice == 2) {\n'\n        '    if (follower_indicator == 1) follower_indicator = 0;\n'\n        '    EM_ASM({ if (window.ZeldaBrowserCoopStatus) window.ZeldaBrowserCoopStatus("Zelda companion test exited."); });\n'\n        '  }\n'
         '}\n'
         '#endif\n\n'+anchor,1)
     return text
