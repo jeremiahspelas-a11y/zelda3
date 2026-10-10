@@ -40,12 +40,13 @@ def patch(text):
        '#endif\n',1)
     # Opt-in authenticity test: game code's existing Zelda follower (#1), not
     # an invented sprite. Refuses to overwrite an existing quest follower.
-    include = '#include <SDL.h>\\n'
+    include = '#include <SDL.h>\n'
     assert text.count(include)==1
-    text=text.replace(include, include+'#include "tagalong.h"\\n',1)
+    text=text.replace(include, include+'#include "tagalong.h"\n',1)
     state_anchor = '/* ZELDA3_NATIVE_SANDBOX_PHASE3 */'
     assert text.count(state_anchor)==1
-    text=text.replace(state_anchor,state_anchor+'\n#ifdef __EMSCRIPTEN__\nstatic bool g_coop_spawned_zelda;\n#endif',1)\n    # Browser START opens a DOM modal, but all choices affect native C state.
+    text=text.replace(state_anchor,state_anchor+'\n#ifdef __EMSCRIPTEN__\nstatic bool g_coop_spawned_zelda;\n#endif',1)
+    # Browser START opens a DOM modal, but all choices affect native C state.
     start_guard = '  if (g_native_sandbox_menu_open) return false;'
     assert text.count(start_guard)==1, 'Native practice modal guard changed'
     text=text.replace(start_guard, start_guard+'\n#ifdef __EMSCRIPTEN__\n  EM_ASM({ if (typeof window.ZeldaBrowserMenuOpen === "function") window.ZeldaBrowserMenuOpen(); });\n  return false;\n#else',1)
