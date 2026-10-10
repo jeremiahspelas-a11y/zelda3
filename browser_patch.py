@@ -11,7 +11,7 @@ def patch(text):
     assert text.count(anchor)==1, "SDL include anchor changed"
     text=text.replace(anchor,anchor+'#ifdef __EMSCRIPTEN__\n#include <emscripten.h>\n#endif\n',1)
     anchor='  if (g_config.autosave)\n    HandleCommand(kKeys_Save + 0, true);\n\n  // clean sdl'
-    assert text.count(anchor)==1, "main-loop end anchor changed"
+    # Phase3 inserts cleanup immediately before // clean sdl; keep this anchor optional.
     # Yield to JS event loop on every video frame without restructuring SDL loop.
     start='    // if vsync isn\'t working, delay manually\n'
     assert text.count(start)==1, "frame throttle anchor changed"
