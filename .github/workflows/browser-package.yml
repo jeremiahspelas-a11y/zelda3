@@ -1,0 +1,51 @@
+name: Native Zelda3 browser package (no game data)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'browser/**'
+      - 'browser_patch.py'
+      - '.github/workflows/browser-package.yml'
+permissions:
+  contents: read
+jobs:
+  browser-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Confirm public repository contains no ROM or extracted game assets
+        run: python3 scripts/check_no_game_assets.py
+      - name: Install Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.15
+      - name: Test native installer against upstream and apply
+        run: |
+          python3 test_install.py
+          python3 install.py . --dry-run
+          python3 install.py .
+          python3 browser_patch.py .
+      - name: Build browser-targeted original C engine
+        run: |
+          make -j2 zelda3.js TARGET_EXEC=zelda3.js \
+            CC=emcc \
+            CFLAGS="-O1 -I . -sUSE_SDL=2 -DSYSTEM_VOLUME_MIXER_AVAILABLE=0" \
+            SDLFLAGS="-sUSE_SDL=2 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 -sEXPORTED_RUNTIME_METHODS=FS,callMain -sASSERTIONS=1 -lm"
+      - name: Confirm real Wasm, JavaScript and native input bridge
+        run: |
+          test -s zelda3.js
+          test -s zelda3.wasm
+          grep -q ZeldaBrowserControl zelda3.js
+          file zelda3.wasm
+          mkdir -p dist
+          cp browser/index.html zelda3.js zelda3.wasm dist/
+          printf '%s\n' 'Experimental authentic Zelda3 engine port. Extract zelda3_assets.dat from your own legally held ROM locally. Never commit ROM or assets.' > dist/README.txt
+      - name: Upload browser build, without copyrighted game resources
+        uses: actions/upload-artifact@v4
+        with:
+          name: zelda3-original-engine-browser-experimental
+          path: dist/
+          retention-days: 7
