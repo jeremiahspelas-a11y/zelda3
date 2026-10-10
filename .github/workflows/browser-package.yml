@@ -20,7 +20,8 @@ jobs:
         run: python3 scripts/check_no_game_assets.py
       - name: Fail fast on Python patch and HTML controller syntax
         run: |
-          python3 -m py_compile browser_patch.py browser/package_single_html.py
+          python3 -m py_compile browser_patch.py browser/package_single_html.py browser/test_controls.py
+          python3 browser/test_controls.py
           python3 - <<'PY'
           from pathlib import Path
           page=Path('browser/index.html').read_text()
