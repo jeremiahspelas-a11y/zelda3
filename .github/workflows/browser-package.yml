@@ -43,6 +43,17 @@ jobs:
           mkdir -p dist
           cp browser/index.html zelda3.js zelda3.wasm dist/
           printf '%s\n' 'Experimental authentic Zelda3 engine port. Extract zelda3_assets.dat from your own legally held ROM locally. Never commit ROM or assets.' > dist/README.txt
+      - name: Bundle single-file native Android browser trial
+        run: |
+          python3 browser/package_single_html.py . dist/zelda3-android-native-trial.html
+          test -s dist/zelda3-android-native-trial.html
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("dist/zelda3-android-native-trial.html").read_text()
+          assert 'Module.wasmBinary' in s
+          assert '<script src="zelda3.js"></script>' not in s
+          print("Embedded original Zelda3 WASM into a single Android-opening HTML file.")
+          PY
       - name: Upload browser build, without copyrighted game resources
         uses: actions/upload-artifact@v4
         with:
