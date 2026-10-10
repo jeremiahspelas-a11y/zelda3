@@ -38,6 +38,20 @@ def patch(text):
        '#ifdef __EMSCRIPTEN__\n'
        '    EM_ASM({ console.log("[Zelda3] SDL_OpenAudioDevice id:", $0, "error:", UTF8ToString($1)); }, (int)device, SDL_GetError());\n'
        '#endif\n',1)
+    # Direct-to-dungeon: preload the project's authentic reference snapshot
+    # after engine/video/audio and SRAM initialization, before first frame.
+    # The browser writes this file privately to Emscripten's in-memory FS.
+    boot_anchor = '  ZeldaReadSram();\\n'
+    assert text.count(boot_anchor) == 1, 'dungeon bootstrap anchor changed'
+    text=text.replace(boot_anchor, boot_anchor+
+      '#ifdef __EMSCRIPTEN__\\n'
+      '  FILE *training_file = fopen("/training-room.sav", "rb");\\n'
+      '  if (training_file) {\\n'
+      '    fclose(training_file);\\n'
+      '    SaveLoadSlot(kSaveLoad_Load, 256);\\n'
+      '    EM_ASM({ console.log("[Zelda3] Authentic castle reference state loaded before first frame"); });\\n'
+      '  }\\n'
+      '#endif\\n', 1)
     # The original install.py intercepts every START press. In the browser
     # this prevents title-screen advancement and file/name selection.
     # Browser uses the dedicated CO-OP SANDBOX HTML button instead.
