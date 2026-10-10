@@ -23,8 +23,8 @@ var Module={canvas:document.querySelector('#canvas'),noInitialRun:true,
 };
 document.querySelector('#assets').addEventListener('change',async e=>{
  const f=e.target.files?.[0];if(!f)return;
- if(f.size<100000||f.size>80000000){status.textContent='Unexpected asset file size; select zelda3_assets.dat.';return;}
- assetBytes=new Uint8Array(await f.arrayBuffer());status.textContent='Assets selected locally ('+f.size+' bytes).';start.disabled=!engineReady;
+ if(!/\.dat$/i.test(f.name) || /\.sfc$|\.smc$/i.test(f.name)){assetBytes=null;start.disabled=true;status.textContent='That is a ROM file. This build needs zelda3_assets.dat EXTRACTED from the ROM, not the .sfc file. No file has been uploaded.';return;}\n if(f.size<100000||f.size>80000000){status.textContent='Unexpected asset file size; select zelda3_assets.dat.';return;}
+ assetBytes=new Uint8Array(await f.arrayBuffer());\n if(assetBytes[0]===0x78 && assetBytes[1]===0x9c){status.textContent='Wrong asset format.';start.disabled=true;return;}\n status.textContent='Assets selected locally ('+f.size+' bytes).';start.disabled=!engineReady;
 });
 start.addEventListener('click',()=>{
  if(!engineReady||!assetBytes||running)return;
