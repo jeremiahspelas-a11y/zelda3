@@ -18,6 +18,14 @@ def patch(text):
     end='\n  }\n  if (g_config.autosave)'
     assert text.count(end)==1, "end of event loop anchor changed"
     text=text.replace(end, '\n#ifdef __EMSCRIPTEN__\n    emscripten_sleep(0);  /* ZELDA3_BROWSER_ASYNC_LOOP */\n#endif\n  }\n  if (g_config.autosave)',1)
+    # Scale the ORIGINAL Zelda3 frame pacing (60 Hz -> 120/240/480 Hz).
+    # Gameplay remains the real native engine, without invented cutscene skips.
+    throttle='      lastTick += delays[frameCtr % 3];\n'
+    assert text.count(throttle)==1, 'native frame pacing anchor changed'
+    text=text.replace(throttle,
+      '#ifdef __EMSCRIPTEN__\n'
+      '      lastTick += (delays[frameCtr % 3] + g_browser_playback_speed / 2) / g_browser_playback_speed;\n'
+      '#else\n'+throttle+'#endif\n',1)
     # The browser bundle previously shipped without zelda3.ini, which leaves
     # g_config.enable_audio=false. Force explicit browser-safe config at startup.
     init = '  ParseConfigFile(config_file);\n'
@@ -67,6 +75,12 @@ def patch(text):
     assert text.count(anchor)==1, "input bridge anchor changed"
     text=text.replace(anchor,
         '#ifdef __EMSCRIPTEN__\n'
+        'static int g_browser_playback_speed = 1;\n'
+        'EMSCRIPTEN_KEEPALIVE int ZeldaBrowserSetPlaybackSpeed(int speed) {\n'
+        '  if (speed != 1 && speed != 2 && speed != 4 && speed != 8) return g_browser_playback_speed;\n'
+        '  g_browser_playback_speed = speed;\n'
+        '  return speed;\n'
+        '}\n'
         'EMSCRIPTEN_KEEPALIVE int ZeldaBrowserControl(int button, int down) {\n'
         '  static const uint8 kNativeSnesBits[12] = {4,5,6,7,2,3,8,0,9,1,10,11};\n'
         '  if (button < 0 || button >= 12) return -1;\n'
