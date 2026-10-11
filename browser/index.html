@@ -20,7 +20,7 @@ main{padding:5px;gap:4px}#view{height:min(51dvh,calc((100vw - 12px)*.875));flex:
 #system-controls #snes-start,#system-controls #snes-select{background:#286743!important;border:2px solid #a6eba8!important;color:white;border-radius:24px;min-width:100px}
 #system-controls{justify-content:center;padding-bottom:max(4px,env(safe-area-inset-bottom))}
 </style></head><body><main><h1>THE LEGEND OF ZELDA · Princess Zelda playable test</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
-<section class="row"><button id="sound" type="button">♫ SOUND ON</button><button id="practice-direct" type="button">CO-OP SANDBOX</button><button id="training" type="button" disabled>ENTER TEST ROOM</button><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="launch-engine" disabled>LAUNCH ENGINE</button></section>
+<section class="row"><button id="sound" type="button">♫ SOUND ON</button><button id="practice-direct" type="button">CO-OP SANDBOX</button><button id="training" type="button" disabled>ENTER TEST ROOM</button><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="launch-engine" disabled>LAUNCH ENGINE</button><button id="speed" type="button" aria-label="Playback speed" style="background:#4b4c80;border-color:#bebbea;min-width:94px">SPEED 1×</button></section>
 <section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Co-op Sandbox — Prototype</h2><p>Prototype step: summon Zelda using her actual in-game follower sprite and logic. This is not yet a separate dungeon or independently playable second character. Only test on a disposable save.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Try Zelda companion (prototype)</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
 <div class="shoulders"><button data-b="10">L</button><span>ORIGINAL ADVENTURE · ZELDA SKIN TEST</span><button data-b="11">R</button></div>
 <div id="pad"><div class="grid" aria-label="Directional controls">
@@ -97,6 +97,19 @@ document.querySelector('#practice-direct').addEventListener('click',()=>{
  window.ZeldaBrowserMenuOpen();
 });
 const controlNames=['UP','DOWN','LEFT','RIGHT','SELECT','START','B','A','Y','X','L','R'];
+const speedButton=document.querySelector('#speed');
+const speeds=[1,2,4,8];let speedIndex=0;
+speedButton.addEventListener('click',()=>{
+ if(!running){status.textContent='Launch engine before changing playback speed';return;}
+ const candidate=speeds[(speedIndex+1)%speeds.length];
+ try{
+  if(typeof Module._ZeldaBrowserSetPlaybackSpeed!=='function')throw new Error('native speed control unavailable');
+  const applied=Module._ZeldaBrowserSetPlaybackSpeed(candidate);
+  speedIndex=speeds.indexOf(applied);
+  speedButton.textContent='SPEED '+applied+'×';
+  status.textContent='Playback '+applied+'× — START / SELECT remain normal SNES controller inputs';
+ }catch(err){status.textContent='Speed error: '+err.message;}
+});
 const activePresses=new Map(),MIN_TAP_MS=170;
 function nativeControl(id,on){
  if(!running){status.textContent='Launch engine before pressing '+controlNames[id];return;}
