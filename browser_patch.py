@@ -140,7 +140,7 @@ def patch_zelda_skin(root):
        'bool g_browser_rendering_hero;\n'
        '#endif\n'
        +anchor+'\n'
-       '#ifdef __EMSCRIPTEN__\n'
+       +'#ifdef __EMSCRIPTEN__\n'
        '  if (g_browser_zelda_skin) {\n'       '    if (link_player_handler_state == kPlayerState_AsleepInBed) {\n'
        '      /* Render the actual SNES sleeping pose at its exact original bed\n'
        '         coordinates, instead of drawing the standing Zelda follower. */\n'
