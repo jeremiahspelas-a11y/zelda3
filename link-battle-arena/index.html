@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Link Battle Arena alpha</title>
+<style>
+body{margin:0;background:#12221b;color:#f8f2d8;font:16px system-ui;text-align:center}header{padding:10px}h1{font-size:22px;margin:4px}
+canvas{display:block;width:min(96vw,800px);height:auto;margin:auto;background:#3d7654;image-rendering:pixelated;border:4px solid #a1aa8d;border-radius:10px}
+.controls{display:flex;justify-content:space-between;max-width:800px;margin:10px auto;gap:12px;padding:0 8px}
+.pad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px)}
+.pad button:first-child{grid-column:2}.pad button:nth-child(2){grid-column:1;grid-row:2}.pad button:nth-child(3){grid-column:2;grid-row:3}.pad button:nth-child(4){grid-column:3;grid-row:2}
+button{background:#2d5149;border:1px solid #c0d4b0;border-radius:8px;color:white;font-weight:bold;font-size:15px;min-width:46px;min-height:46px;touch-action:none}
+.action{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+p{font-size:12px;color:#b8cfbd;padding:0 8px}.hud{display:flex;justify-content:space-between;max-width:790px;margin:6px auto;color:#ffaaa4;padding:0 8px}
+</style>
+<header><h1>⚔️ LINK BATTLE ARENA · alpha 0.1</h1><button id="start">Start / Rematch</button> <button id="pause">Pause</button></header>
+<div class="hud"><span id="left">PLAYER ♥♥♥</span><span id="msg">VS AI · FIRST TO SURVIVE</span><span id="right">RIVAL ♥♥♥</span></div>
+<canvas width="640" height="380" id="game"></canvas>
+<div class="controls"><div class="pad"><button data-k="up">▲</button><button data-k="left">◀</button><button data-k="down">▼</button><button data-k="right">▶</button></div>
+<div class="action"><button data-k="attack">⚔ Sword</button><button data-k="block">🛡 Block</button><button data-k="spin">✴ Spin</button><button id="again">↻ Again</button></div></div>
+<p>Touch buttons or WASD / arrows to move · J/Space sword · K block · L spin · P pause. Original placeholder art; no ROM needed. Online multiplayer and Zelda3 engine integration are not yet implemented.</p>
+<script>
+(()=>{"use strict";const cv=document.querySelector("canvas"),c=cv.getContext("2d"),keys=new Set(),ob=[{x:180,y:80,w:45,h:55},{x:420,y:80,w:45,h:55},{x:180,y:250,w:45,h:55},{x:420,y:250,w:45,h:55}];let p,a,state="ready",last=0;
+const fresh=(x,y,col)=>({x,y,col,dir:1,hp:3,inv:0,attack:0,spin:0,cd:0,scd:0,hit:false,block:false});
+function reset(){p=fresh(90,185,"#40ba72");a=fresh(550,185,"#ec6868");a.dir=3;keys.clear();state="play";hud()}
+function hud(){document.querySelector("#left").textContent="PLAYER "+"♥".repeat(p.hp)+"♡".repeat(3-p.hp);document.querySelector("#right").textContent="RIVAL "+"♥".repeat(a.hp)+"♡".repeat(3-a.hp);document.querySelector("#msg").textContent=state==="play"?"VS AI":state==="pause"?"PAUSED":state==="ready"?"PRESS START":p.hp? "VICTORY":"DEFEAT"}
+function blocked(x,y){return x<28||x>612||y<28||y>352||ob.some(o=>x+13>o.x&&x-13<o.x+o.w&&y+13>o.y&&y-13<o.y+o.h)}
+function move(f,x,y,dt){let m=Math.hypot(x,y);if(!m)return;x/=m;y/=m;f.dir=Math.abs(x)>Math.abs(y)?x>0?1:3:y>0?2:0;let nx=f.x+x*dt*125,ny=f.y+y*dt*125;if(!blocked(nx,f.y))f.x=nx;if(!blocked(f.x,ny))f.y=ny}
+const dirs=[[0,-1],[1,0],[0,1],[-1,0]];
+function swing(f){if(f.cd>0)return;f.attack=.22;f.cd=.46;f.hit=false}
+function spin(f){if(f.scd>0)return;f.spin=.38;f.scd=3;f.hit=false}
+function damage(v,f,wide){if(v.inv>0)return;const dx=f.x-v.x,dy=f.y-v.y,dist=Math.max(1,Math.hypot(dx,dy)),fv=dirs[v.dir];if(!wide&&v.block&&(dx*fv[0]+dy*fv[1])/dist>.35){v.inv=.15;return}v.hp--;v.inv=.8;for(let i=0;i<14;i++){let nx=v.x-dx/dist*2,ny=v.y-dy/dist*2;if(!blocked(nx,ny)){v.x=nx;v.y=ny}}if(!v.hp)state="done";hud()}
+function step(dt){if(state!=="play")return;for(const f of [p,a])for(const k of ["inv","attack","spin","cd","scd"])f[k]=Math.max(0,f[k]-dt);
+p.block=keys.has("block");move(p,(keys.has("right")?1:0)-(keys.has("left")?1:0),(keys.has("down")?1:0)-(keys.has("up")?1:0),dt*(p.block?.5:1));if(keys.has("attack"))swing(p);if(keys.has("spin"))spin(p);
+let dx=p.x-a.x,dy=p.y-a.y,d=Math.max(1,Math.hypot(dx,dy));a.block=d<65&&p.attack>0;move(a,dx/d,dy/d,dt*(d<42?-.4:.84));if(d<48&&a.cd<=0&&Math.random()<dt*2.4)swing(a);if(d<58&&a.scd<=0&&Math.random()<dt*.2)spin(a);
+for(const [f,v] of [[p,a],[a,p]]){let x=v.x-f.x,y=v.y-f.y,r=Math.hypot(x,y),fv=dirs[f.dir];if(!f.hit&&((f.spin>.03&&r<58)||(f.attack>.03&&r<49&&(x*fv[0]+y*fv[1])/Math.max(1,r)>.15))){f.hit=true;damage(v,f,f.spin>.03);if(state!=="play")break}}}
+function rect(x,y,w,h,col){c.fillStyle=col;c.fillRect(x,y,w,h)}
+function drawF(f){c.save();c.translate(Math.round(f.x),Math.round(f.y));if(f.inv&&Math.floor(f.inv*15)%2)c.globalAlpha=.45;rect(-11,7,22,6,"#173322");rect(-11,-9,22,23,f.col);rect(-8,-16,16,11,"#e3b285");rect(-12,-19,24,8,f.col);let v=dirs[f.dir];if(f.block)rect(v[0]*17-8,v[1]*17-9,16,18,"#aed4e6");if(f.attack||f.spin){c.strokeStyle="#ffed9d";c.lineWidth=7;c.beginPath();if(f.spin)c.arc(0,0,30,0,7);else{let angle=Math.atan2(v[1],v[0]);c.arc(0,0,29,angle-1,angle+1)}c.stroke()}c.restore()}
+function draw(){rect(0,0,640,380,"#265440");rect(20,20,600,340,"#a39c81");rect(27,27,586,326,"#48825c");for(let y=32;y<350;y+=32)for(let x=32;x<610;x+=32){rect(x,y,1,32,"#3a7150");rect(x,y,32,1,"#3a7150")}for(const o of ob){rect(o.x+4,o.y+5,o.w,o.h,"#16372a");rect(o.x,o.y,o.w,o.h,"#9aa199");rect(o.x+7,o.y+7,o.w-14,o.h-14,"#6b776c")}drawF(a);drawF(p);if(state!=="play"){rect(0,0,640,380,"#10202099");c.fillStyle="#ffe9a5";c.font="bold 32px sans-serif";c.textAlign="center";c.fillText(state==="ready"?"PRESS START":state==="pause"?"PAUSED":p.hp?"YOU WIN!":"RIVAL WINS",320,190)}}
+function frame(t){let dt=Math.min(.04,(t-last)/1000||0);last=t;step(dt);draw();requestAnimationFrame(frame)}
+function pause(){if(state==="play")state="pause";else if(state==="pause")state="play";hud()}
+document.querySelector("#start").onclick=reset;document.querySelector("#again").onclick=reset;document.querySelector("#pause").onclick=pause;
+const map={w:"up",a:"left",s:"down",d:"right",ArrowUp:"up",ArrowLeft:"left",ArrowDown:"down",ArrowRight:"right",j:"attack"," ":"attack",k:"block",l:"spin"};
+document.addEventListener("keydown",e=>{if(e.key.toLowerCase()==="p"&&!e.repeat)pause();let k=map[e.key]||map[e.key.toLowerCase()];if(k){e.preventDefault();keys.add(k)}});document.addEventListener("keyup",e=>{let k=map[e.key]||map[e.key.toLowerCase()];if(k)keys.delete(k)});
+window.addEventListener("blur",()=>keys.clear());document.querySelectorAll("[data-k]").forEach(b=>{const k=b.dataset.k;b.addEventListener("pointerdown",e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(k)});["pointerup","pointercancel","lostpointercapture"].forEach(evt=>b.addEventListener(evt,()=>keys.delete(k)))});
+reset();state="ready";hud();requestAnimationFrame(frame)})();
+</script></html>
