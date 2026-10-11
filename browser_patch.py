@@ -190,12 +190,47 @@ def patch_zelda_skin(root):
        '#endif', 1)
     p.write_text(t)
 
+
+def patch_file_select(root):
+    """Use the original Princess Zelda's in-game animation tiles for the save
+    slot body, while preserving the original equipment sword/shield sprites."""
+    p=root/'src'/'select_file.c'
+    t=p.read_text()
+    anchor='void SelectFile_Func5_DrawOams(int k) {'
+    assert t.count(anchor)==1
+    t=t.replace(anchor,
+      '#ifdef __EMSCRIPTEN__\n'
+      '#include "tagalong.h"\n'
+      'extern bool g_browser_zelda_skin;\n'
+      '#endif\n'+anchor,1)
+    original='  SetOamPlain(oam + 3, x, y + 0, 0, kSelectFile_Draw_Flags3[k], 2);\n' + \
+             '  SetOamPlain(oam + 4, x, y + 8, 2, kSelectFile_Draw_Flags3[k] | 0x40, 2);'
+    assert t.count(original)==1
+    new=(
+      '#ifdef __EMSCRIPTEN__\n'
+      '  if (g_browser_zelda_skin) {\n'
+      '    /* Princess Zelda uses SNES sprite tiles 0x20 and 0x22.\n'
+      '       Ask the original follower animator to provide its DMA graphics. */\n'
+      '    uint8 old = follower_indicator;\n'
+      '    follower_indicator = 1;\n'
+      '    Follower_AnimateMovement_preserved(0, BG2HOFS_copy2 + x, BG2VOFS_copy2 + y);\n'
+      '    follower_indicator = old;\n'
+      '    SetOamPlain(oam + 3, x, y, 0x20, 0x38, 2);\n'
+      '    SetOamPlain(oam + 4, x, y + 8, 0x22, 0x78, 2);\n'
+      '  } else\n'
+      '#endif\n'
+      '  {\n'+original+'\n  }'
+    )
+    t=t.replace(original,new,1)
+    p.write_text(t)
+
 def main():
     root=Path(sys.argv[1])
     path=root/'src'/'main.c'
     original=path.read_text()
     path.write_text(patch(original))
     patch_zelda_skin(root)
+    patch_file_select(root)
     print('Browser event yield and native input bridge installed.')
 if __name__=='__main__':
     main()
