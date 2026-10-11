@@ -128,7 +128,7 @@ def patch_zelda_skin(root):
        '#endif\n'
        +anchor+'\n'
        '#ifdef __EMSCRIPTEN__\n'
-       '  if (g_browser_zelda_skin) {\n'
+       '  if (g_browser_zelda_skin) {\n'       '    if (link_player_handler_state == kPlayerState_AsleepInBed) return; /* bedding obscures sleeping princess until she wakes */\n'
        '    /* One call per native player drawing, including the starting bed. */\n'
        '    uint8 prev = follower_indicator;\n'
        '    g_browser_rendering_hero = true;\n'
