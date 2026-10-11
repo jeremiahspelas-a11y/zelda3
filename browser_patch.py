@@ -148,7 +148,7 @@ def patch_zelda_skin(root):
        '      LinkOam_Main();\n'
        '      g_browser_zelda_skin = true;\n'
        '      /* Exchange the original sleeping head tile for Princess Zelda\n'
-       '         while retaining the game's sleeping body and bed occlusion. */\n'
+       '         while retaining the original sleeping body and bed occlusion. */\n'
        '      uint8 px = link_x_coord - BG2HOFS_copy2;\n'
        '      uint8 py = link_y_coord - BG2VOFS_copy2;\n'
        '      for (int i = 0; i < 128; i++) {\n'
