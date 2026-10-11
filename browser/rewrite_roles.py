@@ -62,6 +62,7 @@ def rewrite_message(text, num):
     changed = text.replace("Princess Zelda", "Prince Link")
     changed = re.sub(r"\bPrincess\b", "Prince", changed)
     changed = re.sub(r"\bZelda\b", "Link", changed)
+    changed = re.sub(r"(?<!Prince )\bLink\b", "Prince Link", changed)
     changed = changed.replace("[Name]", "Zelda")
 
     # Some English pronouns require context, not global replacement.
