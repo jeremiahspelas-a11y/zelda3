@@ -9,7 +9,7 @@ def patch(text):
         raise ValueError("Browser patch already applied")
     anchor = '#include <SDL.h>\n'
     assert text.count(anchor)==1, "SDL include anchor changed"
-    text=text.replace(anchor,anchor+'#ifdef __EMSCRIPTEN__\n#include <emscripten.h>\n#endif\n',1)
+    text=text.replace(anchor,anchor+'#ifdef __EMSCRIPTEN__\n#include <emscripten.h>\nstatic int g_browser_playback_speed = 1;\n#endif\n',1)
     anchor='  if (g_config.autosave)\n    HandleCommand(kKeys_Save + 0, true);\n\n  // clean sdl'
     # Phase3 inserts cleanup immediately before // clean sdl; keep this anchor optional.
     # Yield to JS event loop on every video frame without restructuring SDL loop.
@@ -75,7 +75,6 @@ def patch(text):
     assert text.count(anchor)==1, "input bridge anchor changed"
     text=text.replace(anchor,
         '#ifdef __EMSCRIPTEN__\n'
-        'static int g_browser_playback_speed = 1;\n'
         'EMSCRIPTEN_KEEPALIVE int ZeldaBrowserSetPlaybackSpeed(int speed) {\n'
         '  if (speed != 1 && speed != 2 && speed != 4 && speed != 8) return g_browser_playback_speed;\n'
         '  g_browser_playback_speed = speed;\n'
