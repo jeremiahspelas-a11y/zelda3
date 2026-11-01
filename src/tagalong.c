@@ -5,7 +5,14 @@
  * Trailing samples still update, so FOLLOW resumes through normal Zelda3.
  */
 static bool g_linkpast_companion_hold;
-void LinkPast_SetCompanionHold(bool hold) { g_linkpast_companion_hold = hold; }
+static bool g_linkpast_companion_practice;
+void LinkPast_SetCompanionPractice(bool enabled) {
+  g_linkpast_companion_practice = enabled;
+  if (!enabled) g_linkpast_companion_hold = false;
+}
+void LinkPast_SetCompanionHold(bool hold) {
+  if (g_linkpast_companion_practice) g_linkpast_companion_hold = hold;
+}
 bool LinkPast_GetCompanionHold(void) { return g_linkpast_companion_hold; }
 #include "sprite_main.h"
 #include "sprite.h"
@@ -240,6 +247,13 @@ void Sprite_BecomeFollower(int k) {  // 899f39
 void Follower_Main() {  // 899fc4
   if (!follower_indicator)
     return;
+  /* Explicitly paired LinkPast hero is NOT the Zelda rescue story follower.
+   * Never process timed follower messages, scripted drops, or quest triggers.
+   * Keep using native path history, collisions and original Zelda/Link OAM. */
+  if (g_linkpast_companion_practice && follower_indicator == 1) {
+    Follower_CheckGameMode();
+    return;
+  }
   if (follower_indicator == 0xe) {
     Follower_HandleTrigger();
     return;
@@ -335,7 +349,7 @@ void Follower_CheckGameMode() {  // 89a0e1
     tagalong_layerbits[k] = layerbits;
   }
 
-  if (g_linkpast_companion_hold && follower_indicator == 1) {
+  if (g_linkpast_companion_practice && g_linkpast_companion_hold && follower_indicator == 1) {
     Tagalong_Draw(); /* no movement, but retain authentic pixel art */
     return;
   }
