@@ -94,6 +94,7 @@ required(follower, [
     "if (g_linkpast_companion_practice && follower_indicator == 1)",
     "void LinkPast_SetCompanionPractice(bool enabled)",
     "if (!g_linkpast_companion_practice)",
+    "if (g_linkpast_companion_practice && follower_indicator != 1)",
     "Tagalong_Draw();",
 ], "original follower hold/follow")
 
