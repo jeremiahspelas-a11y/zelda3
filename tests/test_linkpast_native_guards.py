@@ -12,6 +12,7 @@ player = (ROOT / "src/player.c").read_text()
 sprite = (ROOT / "src/sprite.c").read_text()
 patch = (ROOT / "browser_patch.py").read_text()
 browser = (ROOT / "browser/index.html").read_text()
+party = (ROOT / "src/linkpast_party.h").read_text()
 
 def required(source, fragments, name):
     for fragment in fragments:
@@ -58,11 +59,25 @@ required(patch, [
     "LinkPast_SetZeldaOrbitBoomerangEnabled(g_browser_zelda_skin)",
     "g_coop_spawned_zelda",
     "if (flag_for_boomerang_in_place) return 25;",
+    "LinkPastParty_Start(&g_linkpast_vitals",
+    "LinkPastParty_Switch(&g_linkpast_vitals",
+    "LinkPastParty_Stop(&g_linkpast_vitals",
+    "Hud_Rebuild(); flag_update_hud_in_nmi++;",
 ], "native browser bridge")
 required(browser, [
     'id="linkpast-pair"',
     'id="linkpast-switch"',
+    'id="linkpast-leave"',
+    "Module._ZeldaBrowserSandboxChoice(2)",
     "_ZeldaBrowserSwitchCharacter",
 ], "Android controls")
+
+required(party, [
+    "LinkPastHeroVitals",
+    "LinkPastParty_Start",
+    "LinkPastParty_Switch",
+    "LinkPastParty_Stop",
+    "LinkPastParty_Clear",
+], "native independent hero vital state")
 
 print("PASS native structural regression guards (not a runtime build)")
