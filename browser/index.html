@@ -19,9 +19,13 @@ main{padding:5px;gap:4px}#view{height:min(51dvh,calc((100vw - 12px)*.875));flex:
 #launch-engine{background:#21637e!important;border:2px solid #8bd4ff;min-height:40px}#launch-engine:disabled{opacity:.55}
 #system-controls #snes-start,#system-controls #snes-select{background:#286743!important;border:2px solid #a6eba8!important;color:white;border-radius:24px;min-width:100px}
 #system-controls{justify-content:center;padding-bottom:max(4px,env(safe-area-inset-bottom))}
+#linkpast-combat{display:flex;align-items:center;gap:5px;min-height:33px;justify-content:center;flex-wrap:nowrap}
+#linkpast-combat button{padding:4px 8px;min-height:32px;min-width:70px;font-size:11px;white-space:nowrap}
+#linkpast-combat button:disabled{opacity:.4}
+#linkpast-hero{font-size:10px;color:#e7dbb2;min-width:92px;text-align:center}
 </style></head><body><main><h1>THE LEGEND OF ZELDA · Princess Zelda playable test</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
 <section class="row"><button id="sound" type="button">♫ SOUND ON</button><button id="practice-direct" type="button">CO-OP SANDBOX</button><button id="training" type="button" disabled>ENTER TEST ROOM</button><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="launch-engine" disabled>LAUNCH ENGINE</button><button id="speed" type="button" aria-label="Playback speed" style="background:#4b4c80;border-color:#bebbea;min-width:94px">SPEED 1×</button></section>
-<section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Co-op Sandbox — Prototype</h2><p>Prototype step: summon Zelda using her actual in-game follower sprite and logic. This is not yet a separate dungeon or independently playable second character. Only test on a disposable save.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Try Zelda companion (prototype)</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
+<section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Co-op Sandbox — Prototype</h2><p>Prototype step: summon Zelda using her actual in-game follower sprite and logic. This is not yet a separate dungeon or independently playable second character. Only test on a disposable save.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Try Zelda companion (prototype)</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="linkpast-combat" aria-label="Native LinkPast test controls"><button id="linkpast-pair" type="button">PAIR TEST</button><button id="linkpast-switch" type="button" disabled>SWITCH</button><span id="linkpast-hero">ZELDA · WAND</span></div><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
 <div class="shoulders"><button data-b="10">L</button><span>ORIGINAL ADVENTURE · ZELDA SKIN TEST</span><button data-b="11">R</button></div>
 <div id="pad"><div class="grid" aria-label="Directional controls">
 <button class="empty">·</button><button data-b="0">▲</button><button class="empty">·</button>
@@ -57,6 +61,37 @@ start.addEventListener('click',()=>{
   status.textContent='Starting original Zelda3 adventure…';
   void unlockAudio(); Module.callMain([]); setTimeout(()=>void unlockAudio(),150);
  }catch(e){status.textContent='Startup error: '+e.message;console.error(e);}
+});
+// LinkPast controls only invoke the authentic Zelda3 native C/Wasm runtime.
+const pairHeroButton=document.querySelector('#linkpast-pair');
+const switchHeroButton=document.querySelector('#linkpast-switch');
+const heroLabel=document.querySelector('#linkpast-hero');
+let linkpastHero=1; // native Princess Zelda skin starts as active hero
+pairHeroButton.addEventListener('click',()=>{
+ if(!running){status.textContent='Launch the native engine and enter normal gameplay first.';return;}
+ try{
+  if(typeof Module._ZeldaBrowserSandboxChoice!=='function')throw Error('native pairing API missing');
+  const code=Module._ZeldaBrowserSandboxChoice(1);
+  if(code===1){
+   switchHeroButton.disabled=false;pairHeroButton.disabled=true;
+   status.textContent='Native companion paired. Zelda has her wand; tap SWITCH to control Link.';
+  }else status.textContent=code===21?'Existing quest follower prevents co-op practice.': 'Pair available only during normal exploration (code '+code+').';
+ }catch(e){status.textContent='Pair unavailable: '+e.message;}
+});
+switchHeroButton.addEventListener('click',()=>{
+ if(!running){status.textContent='Launch Zelda3 first.';return;}
+ try{
+  if(typeof Module._ZeldaBrowserSwitchCharacter!=='function')throw Error('native character switch unavailable');
+  const next=1-linkpastHero,code=Module._ZeldaBrowserSwitchCharacter(next);
+  if(code===next){
+   linkpastHero=next;
+   heroLabel.textContent=linkpastHero?'ZELDA · WAND':'LINK · SWORD';
+   status.textContent=linkpastHero?'Native Zelda active: B casts wand burst, hold B to charge.':'Native Link active: original sword and shield.';
+  }else{
+   const hints={21:'Pair the two characters first.',22:'Switch only during normal exploration.',23:'Stand still on safe ground, with no active item or attack, to switch.',24:'Move closer to your companion before switching.'};
+   status.textContent=hints[code]||('Native switch rejected (code '+code+').');
+  }
+ }catch(e){status.textContent='Switch unavailable: '+e.message;}
 });
 const dlg=document.querySelector('#sandbox-dialog');
 window.ZeldaBrowserMenuOpen=()=>{dlg.hidden=false;status.textContent='Co-op prototype options.';};
