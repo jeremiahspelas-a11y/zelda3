@@ -811,7 +811,7 @@ void Ancilla01_SomariaBullet(int k) {  // 88851b
 
   /* Zelda's own wand projectiles expire at close range. Other Somaria
    * bullets keep all their normal behaviors. */
-  if (g_linkpast_wand_ticks[k]) {
+  if (g_linkpast_wand_ticks[k] && !submodule_index) {
     if (++g_linkpast_wand_ticks[k] >= 15) {
       g_linkpast_wand_ticks[k] = 0;
       ancilla_type[k] = 4;
