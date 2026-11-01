@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 
+void LinkPast_SetCompanionPractice(bool enabled);
 void LinkPast_SetCompanionHold(bool hold);
 bool LinkPast_GetCompanionHold(void);
 
