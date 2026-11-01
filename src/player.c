@@ -12,6 +12,10 @@
 #include "misc.h"
 #include "player_oam.h"
 #include "sprite_main.h"
+#ifdef __EMSCRIPTEN__
+/* Browser build renders original Princess Zelda OAM in the controlled slot. */
+extern bool g_browser_zelda_skin;
+#endif
 
 static bool g_ApplyLinksMovementToCamera_called;
 
@@ -2136,6 +2140,16 @@ void HandleSwordSfxAndBeam() {  // 879c66
   link_direction &= ~0xf;
   button_b_frames = 0;
   link_spin_attack_step_counter = 0;
+#ifdef __EMSCRIPTEN__
+  if (g_browser_zelda_skin) {
+    /* Zelda's B action is a short native magic sweep, not Link's sword beam.
+     * The original timing and recovery are kept by the player handler. */
+    LinkPast_SpawnZeldaWandPulse(false);
+    sound_effect_1 = 0x2a | Link_CalculateSfxPan();
+    link_delay_timer_spin_attack = 1;
+    return;
+  }
+#endif
 
   uint8 health = link_health_capacity - 4;
   if (health < link_health_current && ((link_sword_type + 1) & 0xfe) && link_sword_type >= 2) {
@@ -2182,20 +2196,41 @@ void Link_CheckForSwordSwing() {  // 879cd9
     }
     link_delay_timer_spin_attack = kSpinAttackDelays[button_b_frames];
     if (button_b_frames == 5) {
-      if (link_sword_type != 0 && link_sword_type != 1 && link_sword_type != 0xff)
-        AncillaAdd_SwordSwingSparkle(0x26, 4);
-      if (link_sword_type != 0 && link_sword_type != 0xff)
-        TileDetect_MainHandler(link_sword_type == 1 ? 1 : 6);
+#ifdef __EMSCRIPTEN__
+      if (!g_browser_zelda_skin)
+#endif
+      {
+        if (link_sword_type != 0 && link_sword_type != 1 && link_sword_type != 0xff)
+          AncillaAdd_SwordSwingSparkle(0x26, 4);
+        if (link_sword_type != 0 && link_sword_type != 0xff)
+          TileDetect_MainHandler(link_sword_type == 1 ? 1 : 6);
+      }
     } else if (button_b_frames >= 4 && (button_mask_b_y & 1) && (joypad1H_last & kJoypadH_B)) {
       button_mask_b_y &= ~1;
       HandleSwordSfxAndBeam();
       return;
     }
   }
-  CalculateSwordHitBox();
+#ifdef __EMSCRIPTEN__
+  if (!g_browser_zelda_skin)
+#endif
+    CalculateSwordHitBox();
 }
 
 void HandleSwordControls() {  // 879d72
+#ifdef __EMSCRIPTEN__
+  if (g_browser_zelda_skin) {
+    if (joypad1H_last & kJoypadH_B) {
+      Player_Sword_SpinAttackJerks_HoldDown();
+    } else {
+      bool charged = link_spin_attack_step_counter >= 48;
+      Link_ResetSwordAndItemUsage();
+      if (charged)
+        LinkPast_SpawnZeldaWandPulse(true);
+    }
+    return;
+  }
+#endif
   if (joypad1H_last & kJoypadH_B) {
     Player_Sword_SpinAttackJerks_HoldDown();
   } else {
