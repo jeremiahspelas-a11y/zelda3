@@ -6,14 +6,14 @@ on:
       - 'browser/**'
       - 'browser_patch.py'
       - 'src/**'
-      - 'tests/test_linkpast_orbit.c'
+      - 'tests/**'
       - '.github/workflows/browser-package.yml'
   push:
     paths:
       - 'browser/**'
       - 'browser_patch.py'
       - 'src/**'
-      - 'tests/test_linkpast_orbit.c'
+      - 'tests/**'
       - '.github/workflows/browser-package.yml'
 permissions:
   contents: read
@@ -31,6 +31,7 @@ jobs:
         run: |
           python3 -m py_compile browser_patch.py browser/package_single_html.py browser/test_controls.py browser/rewrite_roles.py
           python3 browser/test_controls.py
+          python3 tests/test_linkpast_native_guards.py
           python3 - <<'PY'
           from pathlib import Path
           page=Path('browser/index.html').read_text()
