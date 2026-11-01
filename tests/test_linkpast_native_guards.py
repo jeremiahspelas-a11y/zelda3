@@ -66,6 +66,8 @@ required(patch, [
     "Hud_Rebuild(); flag_update_hud_in_nmi++;",
     "ZeldaBrowserSetCompanionHold(int hold)",
     "LinkPast_SetCompanionHold(false);",
+    "LinkPast_SetCompanionPractice(true);",
+    "LinkPast_SetCompanionPractice(false);",
 ], "native browser bridge")
 required(browser, [
     'id="linkpast-pair"',
@@ -88,7 +90,9 @@ required(party, [
 required(follower, [
     "void LinkPast_SetCompanionHold(bool hold)",
     "bool LinkPast_GetCompanionHold(void)",
-    "if (g_linkpast_companion_hold && follower_indicator == 1)",
+    "if (g_linkpast_companion_practice && g_linkpast_companion_hold && follower_indicator == 1)",
+    "if (g_linkpast_companion_practice && follower_indicator == 1)",
+    "void LinkPast_SetCompanionPractice(bool enabled)",
     "Tagalong_Draw();",
 ], "original follower hold/follow")
 
