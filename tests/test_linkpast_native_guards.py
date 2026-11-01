@@ -13,6 +13,7 @@ sprite = (ROOT / "src/sprite.c").read_text()
 patch = (ROOT / "browser_patch.py").read_text()
 browser = (ROOT / "browser/index.html").read_text()
 party = (ROOT / "src/linkpast_party.h").read_text()
+follower = (ROOT / "src/tagalong.c").read_text()
 
 def required(source, fragments, name):
     for fragment in fragments:
@@ -63,11 +64,15 @@ required(patch, [
     "LinkPastParty_Switch(&g_linkpast_vitals",
     "LinkPastParty_Stop(&g_linkpast_vitals",
     "Hud_Rebuild(); flag_update_hud_in_nmi++;",
+    "ZeldaBrowserSetCompanionHold(int hold)",
+    "LinkPast_SetCompanionHold(false);",
 ], "native browser bridge")
 required(browser, [
     'id="linkpast-pair"',
     'id="linkpast-switch"',
     'id="linkpast-leave"',
+    'id="linkpast-order"',
+    '_ZeldaBrowserSetCompanionHold',
     "Module._ZeldaBrowserSandboxChoice(2)",
     "_ZeldaBrowserSwitchCharacter",
 ], "Android controls")
@@ -79,5 +84,12 @@ required(party, [
     "LinkPastParty_Stop",
     "LinkPastParty_Clear",
 ], "native independent hero vital state")
+
+required(follower, [
+    "void LinkPast_SetCompanionHold(bool hold)",
+    "bool LinkPast_GetCompanionHold(void)",
+    "if (g_linkpast_companion_hold && follower_indicator == 1)",
+    "Tagalong_Draw();",
+], "original follower hold/follow")
 
 print("PASS native structural regression guards (not a runtime build)")
