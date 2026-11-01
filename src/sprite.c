@@ -13,6 +13,10 @@
 #include "tile_detect.h"
 #include "sprite_main.h"
 #include "assets.h"
+#ifdef __EMSCRIPTEN__
+/* Actual native browser hero art/combat selector. */
+extern bool g_browser_zelda_skin;
+#endif
 static const uint16 kOamGetBufferPos_Tab0[6] = {0x171, 0x201, 0x31, 0xc1, 0x141, 0x1d1};
 static const uint16 kOamGetBufferPos_Tab1[48] = {
    0x30,  0x50,  0x80,  0xb0,  0xe0, 0x110, 0x140, 0x170, 0x1d0, 0x1d4, 0x1dc, 0x1e0, 0x1e4, 0x1ec, 0x1f0, 0x1f8,
@@ -2560,7 +2564,11 @@ bool Sprite_CheckDamageToLink_ignore_layer(int k) {  // 86f15c
   if (!carry || link_auxiliary_state)
     return false;
 
-  if (link_is_bunny_mirror || sign8(link_state_bits) || !(sprite_flags5[k] & 0x20) || !link_shield_type)
+  if (link_is_bunny_mirror || sign8(link_state_bits) || !(sprite_flags5[k] & 0x20) || !link_shield_type
+#ifdef __EMSCRIPTEN__
+      || g_browser_zelda_skin /* Zelda never inherits Link's frontal shield */
+#endif
+     )
     goto if_3;
   sprite_state[k] = 0;
 
@@ -2639,6 +2647,13 @@ bool Sprite_ReturnIfLiftedPermissive(int k) {  // 86f257
 uint8 Sprite_CheckDamageFromLink(int k) {  // 86f2b4
   if (sprite_hit_timer[k] & 0x80 || sprite_floor[k] != link_is_on_lower_level || player_oam_y_offset == 0x80)
     return 0;
+#ifdef __EMSCRIPTEN__
+  /* The player B timer is reused for Zelda's wand. It must not cause hidden
+   * sword damage; the original Somaria ancilla applies her wand hits. */
+  if (g_browser_zelda_skin && (button_mask_b_y & 0x80) &&
+      !(link_item_in_hand & 10) && !(link_position_mode & 0x10))
+    return 0;
+#endif
 
   SpriteHitBox hb;
   Player_SetupActionHitBox(&hb);
