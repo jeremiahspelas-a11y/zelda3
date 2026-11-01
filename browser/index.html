@@ -19,13 +19,13 @@ main{padding:5px;gap:4px}#view{height:min(51dvh,calc((100vw - 12px)*.875));flex:
 #launch-engine{background:#21637e!important;border:2px solid #8bd4ff;min-height:40px}#launch-engine:disabled{opacity:.55}
 #system-controls #snes-start,#system-controls #snes-select{background:#286743!important;border:2px solid #a6eba8!important;color:white;border-radius:24px;min-width:100px}
 #system-controls{justify-content:center;padding-bottom:max(4px,env(safe-area-inset-bottom))}
-#linkpast-combat{display:flex;align-items:center;gap:5px;min-height:33px;justify-content:center;flex-wrap:nowrap}
+#linkpast-combat{display:flex;align-items:center;gap:5px;min-height:33px;justify-content:center;flex-wrap:wrap}
 #linkpast-combat button{padding:4px 8px;min-height:32px;min-width:70px;font-size:11px;white-space:nowrap}
 #linkpast-combat button:disabled{opacity:.4}
 #linkpast-hero{font-size:10px;color:#e7dbb2;min-width:92px;text-align:center}
 </style></head><body><main><h1>THE LEGEND OF ZELDA · Princess Zelda playable test</h1><p id="status" role="status">Loading authentic Zelda3 WebAssembly engine…</p>
 <section class="row"><button id="sound" type="button">♫ SOUND ON</button><button id="practice-direct" type="button">CO-OP SANDBOX</button><button id="training" type="button" disabled>ENTER TEST ROOM</button><label>Locally extracted zelda3_assets.dat <input type="file" id="assets" accept=".dat"></label><button id="launch-engine" disabled>LAUNCH ENGINE</button><button id="speed" type="button" aria-label="Playback speed" style="background:#4b4c80;border-color:#bebbea;min-width:94px">SPEED 1×</button></section>
-<section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Co-op Sandbox — Prototype</h2><p>Prototype step: summon Zelda using her actual in-game follower sprite and logic. This is not yet a separate dungeon or independently playable second character. Only test on a disposable save.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Try Zelda companion (prototype)</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="linkpast-combat" aria-label="Native LinkPast test controls"><button id="linkpast-pair" type="button">PAIR TEST</button><button id="linkpast-switch" type="button" disabled>SWITCH</button><button id="linkpast-leave" type="button" disabled>LEAVE</button><span id="linkpast-hero">ZELDA · WAND</span></div><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
+<section id="sandbox-dialog" hidden role="dialog" aria-modal="true" aria-label="Native Zelda3 practice menu" style="border:2px solid #bda465;padding:12px;background:#1a2c22"><h2 style="font-size:16px;margin:0 0 8px">Co-op Sandbox — Prototype</h2><p>Prototype step: summon Zelda using her actual in-game follower sprite and logic. This is not yet a separate dungeon or independently playable second character. Only test on a disposable save.</p><div class="row"><button data-choice="0">Original inventory</button><button data-choice="1">Try Zelda companion (prototype)</button><button data-choice="2">Leave practice</button><button data-choice="3">Cancel</button></div></section><div id="linkpast-combat" aria-label="Native LinkPast test controls"><button id="linkpast-pair" type="button">PAIR TEST</button><button id="linkpast-switch" type="button" disabled>SWITCH</button><button id="linkpast-order" type="button" disabled>HOLD</button><button id="linkpast-leave" type="button" disabled>LEAVE</button><span id="linkpast-hero">ZELDA · WAND</span></div><div id="view"><canvas id="canvas" width="256" height="224" tabindex="0" aria-label="Original Zelda3 SDL canvas"></canvas></div>
 <div class="shoulders"><button data-b="10">L</button><span>ORIGINAL ADVENTURE · ZELDA SKIN TEST</span><button data-b="11">R</button></div>
 <div id="pad"><div class="grid" aria-label="Directional controls">
 <button class="empty">·</button><button data-b="0">▲</button><button class="empty">·</button>
@@ -65,6 +65,8 @@ start.addEventListener('click',()=>{
 // LinkPast controls only invoke the authentic Zelda3 native C/Wasm runtime.
 const pairHeroButton=document.querySelector('#linkpast-pair');
 const switchHeroButton=document.querySelector('#linkpast-switch');
+const orderHeroButton=document.querySelector('#linkpast-order');
+let companionHolding=false;
 const leaveHeroButton=document.querySelector('#linkpast-leave');
 const heroLabel=document.querySelector('#linkpast-hero');
 let linkpastHero=1; // native Princess Zelda skin starts as active hero
@@ -75,6 +77,7 @@ pairHeroButton.addEventListener('click',()=>{
   const code=Module._ZeldaBrowserSandboxChoice(1);
   if(code===1){
    switchHeroButton.disabled=false;pairHeroButton.disabled=true;leaveHeroButton.disabled=false;
+   orderHeroButton.disabled=false;companionHolding=false;orderHeroButton.textContent='HOLD';
    status.textContent='Native companion paired. Zelda has her wand; tap SWITCH to control Link.';
   }else status.textContent=code===21?'Existing quest follower prevents co-op practice.': 'Pair available only during normal exploration (code '+code+').';
  }catch(e){status.textContent='Pair unavailable: '+e.message;}
@@ -102,9 +105,23 @@ leaveHeroButton.addEventListener('click',()=>{
   if(code!==2)throw Error('native leave rejected (code '+code+')');
   leaveHeroButton.disabled=true;
   switchHeroButton.disabled=true;
+  orderHeroButton.disabled=true;
+  companionHolding=false;orderHeroButton.textContent='HOLD';
   pairHeroButton.disabled=false;
   status.textContent='Native co-op practice ended. Current controlled hero remains active; no story save is written.';
  }catch(e){status.textContent='Leave error: '+e.message;}
+});
+orderHeroButton.addEventListener('click',()=>{
+ if(!running){status.textContent='Launch Zelda3 first.';return;}
+ try{
+  if(typeof Module._ZeldaBrowserSetCompanionHold!=='function')throw Error('native companion-order API missing');
+  const wantHold=companionHolding?0:1;
+  const code=Module._ZeldaBrowserSetCompanionHold(wantHold);
+  if(code!==wantHold)throw Error('native order rejected (code '+code+')');
+  companionHolding=!!code;
+  orderHeroButton.textContent=companionHolding?'FOLLOW':'HOLD';
+  status.textContent=companionHolding?'Companion holding position using original Zelda3 follower.':'Companion following through original Zelda3 pathing.';
+ }catch(e){status.textContent='Order failed: '+e.message;}
 });
 const dlg=document.querySelector('#sandbox-dialog');
 window.ZeldaBrowserMenuOpen=()=>{dlg.hidden=false;status.textContent='Co-op prototype options.';};
@@ -120,7 +137,7 @@ for(const b of dlg.querySelectorAll('[data-choice]')) b.addEventListener('click'
   const messages={1:'Zelda follower activated. Look beside Link and walk a few steps. This is not yet independent co-op.',21:'Cannot activate: another story follower is already present.',22:'Cannot activate during a transition or menu. Return to gameplay.',23:'Cannot activate in this game mode. Reach normal exploration first.'};
   status.textContent=messages[result]||('Native companion returned code '+result);
  }else{
-  if(choice===2){leaveHeroButton.disabled=true;switchHeroButton.disabled=true;pairHeroButton.disabled=false;}
+  if(choice===2){leaveHeroButton.disabled=true;switchHeroButton.disabled=true;orderHeroButton.disabled=true;companionHolding=false;orderHeroButton.textContent='HOLD';pairHeroButton.disabled=false;}
   status.textContent=choice===2?'Native practice ended.':'Returned to Zelda3.';
  }
  dlg.hidden=true;
