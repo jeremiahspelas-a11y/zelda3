@@ -1,32 +1,47 @@
-# LinkPast — native Zelda3 integration status
+# LinkPast — native Zelda3 integration checkpoint (2026-11-01)
 
-## Project identity
+## Canonical project
+**Actual** `jeremiahspelas-a11y/zelda3` C engine + original SNES game graphics, OAM, maps, enemy systems, sounds, and scrolling. Do not deliver a separately drawn HTML imitation as though it were the game.
 
-Work happens in the actual Zelda3 C/WebAssembly game engine. **Do not replace it with a separate custom-drawn game or fake Zelda3 canvas demo.** Original SNES maps, characters, animations, OAM tile drawing, scrolling, collisions, and combat implementation remain authoritative. User's legally extracted data stays local and is never committed.
+- Branch: `feature/linkpast-native-zelda-orbit`
+- Draft PR: https://github.com/jeremiahspelas-a11y/zelda3/pull/1
+- Baseline: `master` — no merge until full native compile and Android runtime checks pass.
+- Original licensed ROM and extracted Nintendo assets stay **private/local**.
 
-Working branch: `feature/linkpast-native-zelda-orbit`; draft pull request #1; original `master` is preserved.
+## Native source integrated (experimental)
 
-## Implemented source code (not yet Android-playtested)
+1. `src/linkpast_orbit.h`, `src/ancilla.c`: Zelda's boomerang uses original ancilla OAM sprite, hitbox, wall collision and homing return. Shorter outbound (12 engine frames), 54-frame orbit at 12px radius, two revolutions; then returns. Link's boomerang logic remains unchanged while the Zelda mode is disabled.
+2. `src/ancilla.c`, `src/player.c`: Zelda's basic B wand uses original **Somaria** effect art and collision, close-range 14-tick lifetime, not the original Fire/Ice Rod. Held B can reach a separate 48-frame charge to release three lateral magic bursts. Zelda's charge no longer calls Link's sword-spin or sword-hit logic. The wand projectile lifetime pauses with native submodule state; newly allocated ancilla slots discard stale wand TTL.
+3. `src/sprite.c`: Zelda cannot inherit Link's hidden shield deflection or invisible sword attack just because the single native player state is reused. Link retains original sword, spin and shield.
+4. `browser_patch.py`, `browser/index.html`: Android-facing native C/Wasm PAIR and SWITCH button bridge. Switch requires a paired follower, safe idle state and nearby companion; refuses switches while boomerang is in flight. Native Zelda follower rendering + native Link OAM are reused; no JavaScript replacement world.
+5. `.github/workflows/browser-package.yml`: native browser CI configured with source path triggers, C orbit test, Python structural guards and Emscripten package steps.
+6. `tests/test_linkpast_orbit.c` + `tests/test_linkpast_native_guards.py`: regression coverage. Local independent C orbit geometry test was **executed**, including GCC `-fsanitize=undefined`, and passed 8 directions. Static source structure checks were also evaluated on fetched branch files.
 
-- **Real native Zelda wand B attack:** The existing SNES B timing triggers a short-range Somaria-effect pulse instead of Link's sword or Fire/Ice Rod, using the game's original magic pixels and collision code. A charged release creates a three-part fan. Extra pulses use the original ancillary slot limit; 14 simulation frames (~42 px) before expiry. Native Link B still uses original sword logic.
-- **Zelda-specific boomerang:** Changes native `src/ancilla.c` boomerang handling. Short outbound distance (12 frames), then 54 frames / two rotations of 12px radius; original boomerang sprite, tile checks and homing return retained. Link's throw remains original.
-- **Native character switching:** Browser touch PAIR TEST and SWITCH invoke exported C methods. Pair refuses to overwrite story followers. Switch requires normal exploration, safe ground, an idle player, and nearby companion; swaps active player and follower coordinates. The original game's existing Zelda follower animator and Link OAM are reused, not redrawn in JS.
-- The existing Zelda skin patch is already in `browser_patch.py` and initializes Zelda as rendered hero; switching controls which native art and primary weapon apply.
-- Browser build workflow includes source-path triggers, source checks, and an eight-direction deterministic C orbit test.
-- Original line endings retained in existing C files for reviewable diffs.
+## Validation status / limits
 
-## Verification
+**Verified:** GitHub branch and PR reflect targeted native source modifications; baseline preserved. A local standalone C test of orbit math compiled and passed (normal and UBSan). The new branch contains test scripts; source-level structural assertions were examined.
 
-- Local native C math test passed for eight directions, 54 frames, continuous entry and two revolutions.
-- Source was fetched back from GitHub and key C function, browser hook and workflow markers verified; GitHub compare shows compact targeted edits.
-- **A current WebAssembly build, real enemy collision playback and Android test have NOT been verified.** Connector-created commits did not cause new GitHub Actions runs to appear, so CI remains pending. Do not call this a complete game or provide a fake "play" link.
+**Not yet verified:** an Emscripten compile of this branch, original Zelda3 live gameplay, native enemy damage calibration, mobile touch latency, audiovisual effects or two-character combat in a real room. On this branch's newest GitHub commits the API returned zero Actions check runs, so workflow success is **not** established. Do not claim a playable native binary, Android live URL, or full balanced combat until tests run.
 
-## Known gaps to address next
+## Remaining non-negotiable requirements
 
-1. Run the native browser package workflow on the feature branch and fix any compile/link errors. Tests only check the deterministic orbit math until live validation.
-2. Finish companion autonomous attack/defense AI: existing follower logic is primarily visual/pathing, not a second full combat actor.
-3. Add Zelda's timed defensive ward, healing and magic economy, and rigorous balance against Link's shield and spin attack.
-4. Confirm level transitions, saving/loading, follower story events, multiple enemy hits, collision walls, sprites and animation at 60 Hz.
-5. Test genuine Android touch controls. Require privately extracted Zelda3 assets from a legally owned ROM; never commit protected game files.
+- Fully **autonomous** opponent-targeting and sword/wand attacks by the inactive hero, with follow/stay/guard commands: current tagalong primarily follows and renders, **not combat AI**.
+- Zelda timed ward and healing with an explicit magic economy; distinct Link shield vs Zelda ward.
+- Separate per-hero health, magic, damage and equipment ownership. The legacy inventory is still shared; the one equipped boomerang must be allocated exclusively to one hero.
+- Validate player animation sprite bank changes, story follower conflicts, dungeon transitions, save/restore, boss/edge cases and simultaneous attacks.
+- Build native Wasm and physically verify on Android using the user's privately extracted Zelda3 game resources.
 
-**Do not merge draft PR #1 into master without native CI passing and in-game playtest.**
+## Required next execution
+
+1. Launch `Native Zelda3 browser package (no game data)` Actions workflow on the feature branch; inspect every compile/test log. Fix failures on branch only.
+2. After successful compile, locally load original game resources, enter a disposable save, test wand+charge+orbit+switch against original enemies, tile collisions, shield and sprite rendering.
+3. Only then implement robust autonomous companion attack state and keep the same code/data/rendering.
+4. Preserve a known-good rollback; **do not merge PR #1 or archive source assets** before real playtesting.
+
+Command for the standalone C path test:
+
+```sh
+cc -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all tests/test_linkpast_orbit.c -o /tmp/linkpast-orbit-test
+/tmp/linkpast-orbit-test
+python3 tests/test_linkpast_native_guards.py
+```
