@@ -26,6 +26,47 @@ void LinkPast_SetZeldaOrbitBoomerangEnabled(bool enabled) {
   g_linkpast_orbit_enabled = enabled;
 }
 
+/* Native Zelda wand: short-reaching Sorceress sweep using original Somaria
+ * effect art and collision, not Link's sword/sword-beam or Fire/Ice Rod.
+ * Basic strike = one 14-frame, ~42-pixel burst.
+ * Fully charged strike = three parallel bursts, same range and recovery.
+ */
+static uint8 g_linkpast_wand_ticks[10];
+
+static void LinkPast_SpawnWandBolt(int sideways) {
+  static const int8 kXOff[4] = {0, 0, -12, 12};
+  static const int8 kYOff[4] = {-12, 12, 0, 0};
+  static const int8 kXVel[4] = {0, 0, -48, 48};
+  static const int8 kYVel[4] = {-48, 48, 0, 0};
+  int k = Ancilla_AllocInit(1, 4);
+  if (k < 0) return;
+  int d = (link_direction_facing >> 1) & 3;
+  int sx = (d < 2) ? sideways : 0;
+  int sy = (d >= 2) ? sideways : 0;
+  ancilla_type[k] = 1;
+  ancilla_numspr[k] = kAncilla_Pflags[1];
+  ancilla_step[k] = 4;
+  ancilla_timer[k] = 3;
+  ancilla_item_to_link[k] = 0;
+  ancilla_objprio[k] = 0;
+  ancilla_dir[k] = d;
+  ancilla_x_vel[k] = kXVel[d];
+  ancilla_y_vel[k] = kYVel[d];
+  ancilla_floor[k] = link_is_on_lower_level;
+  ancilla_floor2[k] = link_is_on_lower_level_mirror;
+  Ancilla_SetXY(k, link_x_coord + kXOff[d] + sx,
+                  link_y_coord + kYOff[d] + sy);
+  g_linkpast_wand_ticks[k] = 1;
+}
+
+void LinkPast_SpawnZeldaWandPulse(bool charged) {
+  LinkPast_SpawnWandBolt(0);
+  if (charged) {
+    LinkPast_SpawnWandBolt(-9);
+    LinkPast_SpawnWandBolt(9);
+  }
+}
+
 static void LinkPast_BoomerangEnterOrbit(int k) {
   LinkPastOrbitState *o = &g_linkpast_boomerang_orbit[k];
   int dx, dy;
@@ -766,6 +807,18 @@ void AncillaAdd_IceRodSparkle(int k) {  // 8884c8
 void Ancilla01_SomariaBullet(int k) {  // 88851b
   static const uint8 kSomarianBlast_Mask[6] = {7, 3, 1, 0, 0, 0};
 
+  /* Zelda's own wand projectiles expire at close range. Other Somaria
+   * bullets keep all their normal behaviors. */
+  if (g_linkpast_wand_ticks[k]) {
+    if (++g_linkpast_wand_ticks[k] >= 15) {
+      g_linkpast_wand_ticks[k] = 0;
+      ancilla_type[k] = 4;
+      ancilla_timer[k] = 7;
+      ancilla_numspr[k] = 16;
+      return;
+    }
+  }
+
   if (!submodule_index) {
     if (!(frame_counter & kSomarianBlast_Mask[ancilla_step[k]])) {
       Ancilla_MoveX(k);
@@ -779,6 +832,7 @@ void Ancilla01_SomariaBullet(int k) {  // 88851b
       ancilla_step[k] = a;
     }
     if (Ancilla_CheckSpriteCollision(k) >= 0 || Ancilla_CheckTileCollision_staggered(k)) {
+      g_linkpast_wand_ticks[k] = 0;
       ancilla_type[k] = 4;
       ancilla_timer[k] = 7;
       ancilla_numspr[k] = 16;
