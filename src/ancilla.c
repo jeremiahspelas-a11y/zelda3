@@ -11,6 +11,32 @@
 #include "dungeon.h"
 #include "sprite_main.h"
 #include "assets.h"
+#include "linkpast_orbit.h"
+
+/* Per-projectile state, isolated from original SNES RAM and save layout. */
+typedef struct LinkPastOrbitState {
+  uint8 enabled, phase, tick, start_angle;
+  uint16 center_x, center_y;
+} LinkPastOrbitState;
+static LinkPastOrbitState g_linkpast_boomerang_orbit[10];
+static bool g_linkpast_orbit_enabled = false;
+
+/* Set by the future playable-character controller: true ONLY for Zelda. */
+void LinkPast_SetZeldaOrbitBoomerangEnabled(bool enabled) {
+  g_linkpast_orbit_enabled = enabled;
+}
+
+static void LinkPast_BoomerangEnterOrbit(int k) {
+  LinkPastOrbitState *o = &g_linkpast_boomerang_orbit[k];
+  int dx, dy;
+  o->phase = 1;
+  o->tick = 0;
+  o->start_angle = LinkPast_OrbitStartAngle(ancilla_x_vel[k], ancilla_y_vel[k]);
+  LinkPast_OrbitOffset(o->start_angle, &dx, &dy);
+  o->center_x = (uint16)(Ancilla_GetX(k) - dx);
+  o->center_y = (uint16)(Ancilla_GetY(k) - dy);
+  ancilla_K[k] = 0;
+}
 
 static const uint8 kAncilla_Pflags[68] = {
   0,    8,  0xc, 0x10, 0x10,    4, 0x10, 0x18,    8,    8,    8,    0, 0x14, 0, 0x10, 0x28,
@@ -1286,6 +1312,27 @@ void Ancilla05_Boomerang(int k) {  // 8890fc
   if (ancilla_G[k] && !(frame_counter & 1))
     AncillaAdd_SwordChargeSparkle(k);
 
+  /* Native Zelda-only orbit: keep the original boomerang sprite and collision. */
+  LinkPastOrbitState *orbit = &g_linkpast_boomerang_orbit[k];
+  if (orbit->enabled && orbit->phase == 1 && !ancilla_item_to_link[k]) {
+    uint16 x, y;
+    LinkPast_OrbitPosition(orbit->center_x, orbit->center_y,
+                           orbit->start_angle, orbit->tick, &x, &y);
+    Ancilla_SetXY(k, x, y);
+    Ancilla_CheckSpriteCollision(k);
+    /* Geometry, not enemy contact, can interrupt the area-control orbit. */
+    if (Ancilla_CheckTileCollision(k)) {
+      AncillaAdd_BoomerangWallClink(k);
+      Ancilla_Sfx2_Pan(k, (ancilla_tile_attr[k] == 0xf0) ? 6 : 5);
+      ancilla_item_to_link[k] = 1;
+      orbit->phase = 2;
+    } else if (Boomerang_ScreenEdge(k) || ++orbit->tick >= kLinkPastOrbitFrames) {
+      ancilla_item_to_link[k] = 1;
+      orbit->phase = 2;
+    }
+    goto exit_and_draw;
+  }
+
   if (ancilla_item_to_link[k]) {
     if (ancilla_K[k])
       ancilla_K[k]++;
@@ -1308,14 +1355,19 @@ void Ancilla05_Boomerang(int k) {  // 8890fc
   hit_spr = Ancilla_CheckSpriteCollision(k);
 
   if (!ancilla_item_to_link[k]) {
-    if (hit_spr >= 0) {
+    if (hit_spr >= 0 && !orbit->enabled) {
       ancilla_item_to_link[k] ^= 1;
     } else if (Ancilla_CheckTileCollision(k)) {
       AncillaAdd_BoomerangWallClink(k);
       Ancilla_Sfx2_Pan(k, (ancilla_tile_attr[k] == 0xf0) ? 6 : 5);
       ancilla_item_to_link[k] ^= 1;
-    } else if (Boomerang_ScreenEdge(k) || --ancilla_step[k] == 0) {
+    } else if (Boomerang_ScreenEdge(k)) {
       ancilla_item_to_link[k] ^= 1;
+    } else if (--ancilla_step[k] == 0) {
+      if (orbit->enabled)
+        LinkPast_BoomerangEnterOrbit(k);
+      else
+        ancilla_item_to_link[k] ^= 1;
     } else {
       if (ancilla_step[k] < 5)
         ancilla_K[k]--;
@@ -1357,6 +1409,8 @@ void Boomerang_StopOffScreen(int k) {  // 8892ab
 }
 
 void Boomerang_Terminate(int k) {  // 8892f5
+  g_linkpast_boomerang_orbit[k].enabled = 0;
+  g_linkpast_boomerang_orbit[k].phase = 0;
   ancilla_type[k] = 0;
   flag_for_boomerang_in_place = 0;
   if (link_item_in_hand & 0x80) {
@@ -5818,6 +5872,9 @@ uint8 AncillaAdd_Boomerang(uint8 a, uint8 y) {  // 89820f
   int k = Ancilla_AddAncilla(a, y);
   if (k < 0)
     return 0;
+  g_linkpast_boomerang_orbit[k].enabled = g_linkpast_orbit_enabled;
+  g_linkpast_boomerang_orbit[k].phase = 0;
+  g_linkpast_boomerang_orbit[k].tick = 0;
   ancilla_aux_timer[k] = 0;
   ancilla_item_to_link[k] = 0;
   ancilla_K[k] = 0;
@@ -5826,7 +5883,7 @@ uint8 AncillaAdd_Boomerang(uint8 a, uint8 y) {  // 89820f
   flag_for_boomerang_in_place = 1;
   int j = link_item_boomerang - 1;
   ancilla_G[k] = j;
-  ancilla_step[k] = kBoomerang_Tab1[j];
+  ancilla_step[k] = g_linkpast_boomerang_orbit[k].enabled ? kLinkPastOrbitOutboundFrames : kBoomerang_Tab1[j];
   ancilla_arr3[k] = kBoomerang_Tab2[j];
 
   int s = ancilla_G[k] * 2 + ((joypad1H_last & 0xc) && (joypad1H_last & 3) ? 1 : 0);
