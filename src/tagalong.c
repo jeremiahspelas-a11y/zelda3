@@ -377,7 +377,10 @@ void Follower_BasicMover() {  // 89a197
     return;
   }
 
-  Follower_HandleTrigger();
+  /* Story trigger dispatch is also called from BasicMover itself. Keep it
+   * disabled for the practice companion; preserve it for every story NPC. */
+  if (!g_linkpast_companion_practice)
+    Follower_HandleTrigger();
 
   if (follower_indicator == 10 && link_auxiliary_state && countdown_for_blink) {
     int k = tagalong_var2 + 1 == 20 ? 0 : tagalong_var2 + 1;
