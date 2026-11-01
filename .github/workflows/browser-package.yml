@@ -42,6 +42,10 @@ jobs:
         run: |
           cc -std=c11 -O2 -Wall -Wextra -Werror tests/test_linkpast_orbit.c -o /tmp/test_linkpast_orbit
           /tmp/test_linkpast_orbit
+      - name: Validate independent native hero vital state
+        run: |
+          cc -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all tests/test_linkpast_party.c -o /tmp/test_linkpast_party
+          /tmp/test_linkpast_party
       - name: Check real LinkPast native source integration
         run: |
           python3 - <<'PY'
