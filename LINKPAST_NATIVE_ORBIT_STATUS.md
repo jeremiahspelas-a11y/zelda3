@@ -23,6 +23,20 @@
 
 **Not yet verified:** an Emscripten compile of this branch, original Zelda3 live gameplay, native enemy damage calibration, mobile touch latency, audiovisual effects or two-character combat in a real room. On this branch's newest GitHub commits the API returned zero Actions check runs, so workflow success is **not** established. Do not claim a playable native binary, Android live URL, or full balanced combat until tests run.
 
+## 2026-11-01 continued integration — native party vitals and companion orders
+
+This work is committed on the **same** draft PR #1, not merged into master.
+
+- `src/linkpast_party.h`: independent Link/Zelda HP and MP snapshots; pairing copies the *current* vitals to both, not a free heal; switching saves the active hero's HP/MP and restores the target hero's previously saved values, clamped to the game's current heart capacity; no ROM, sprite, map or persistent save-format changes.
+- `tests/test_linkpast_party.c`: invalid-target guards, no initial healing exploit, health/magic persistence, clamping, stop/restart transitions. An equivalent local C test harness was compiled with GCC `-Wall -Wextra -Werror -fsanitize=undefined` and **passed**. This is a standalone unit test, not an Emscripten integration success.
+- `browser_patch.py`: native `ZeldaBrowserSwitchCharacter` now checks for pending heal/magic refill, saves/loads vitals, updates game HUD with `Hud_Rebuild()`, and keeps the current hero active in the original engine. New `ZeldaBrowserSetCompanionHold` C export toggles a real engine follower behavior.
+- `src/tagalong.c/.h`: `LinkPast_SetCompanionHold` tells the original Zelda follower to remain stationary after its route-history capture, while keeping original sprite rendering. FOLLOW resumes the game's own follower movement; **this does not yet give the companion independent combat AI**.
+- `browser/index.html`: native Android PAIR, SWITCH, HOLD/FOLLOW and LEAVE buttons; explicitly restores button state on exit. No separately rendered combat scene or fake sprites.
+- `.github/workflows/browser-package.yml`, `tests/test_linkpast_native_guards.py`: C unit test and structural smoke checks are incorporated into CI source definitions. No current Actions result was accessible; **a native WebAssembly build has not been verified**.
+- `master` remains untouched. Room/dungeon boundary switching, autonomous teammate combat, wand ward/healing and persistent dual-character save data are still unimplemented.
+
+**Safety limit:** the switching routine currently requires the heroes to be within 32 in-game pixels so it cannot blindly switch to an unloaded map region. HOLD can leave a hero farther away, but switching back requires getting near the companion until safe cross-room switching is implemented.
+
 ## Remaining non-negotiable requirements
 
 - Fully **autonomous** opponent-targeting and sword/wand attacks by the inactive hero, with follow/stay/guard commands: current tagalong primarily follows and renders, **not combat AI**.
