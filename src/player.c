@@ -2220,11 +2220,26 @@ void Link_CheckForSwordSwing() {  // 879cd9
 void HandleSwordControls() {  // 879d72
 #ifdef __EMSCRIPTEN__
   if (g_browser_zelda_skin) {
+    /* Independent wand-charge state: NEVER enter the sword spin, sword-tip
+     * collision, or Link's charged-spin animation. Retain the 48-frame B
+     * timing familiar from Zelda3 without borrowing its sword hitboxes. */
     if (joypad1H_last & kJoypadH_B) {
-      Player_Sword_SpinAttackJerks_HoldDown();
+      if (set_when_damaging_enemies == 1) {
+        Link_ResetSwordAndItemUsage();
+        link_spin_attack_step_counter = 0;
+        return;
+      }
+      button_b_frames = 9;
+      link_cant_change_direction |= 1;
+      link_delay_timer_spin_attack = 0;
+      link_speed_setting = 12;
+      if (link_spin_attack_step_counter < 48 &&
+          ++link_spin_attack_step_counter == 48)
+        Ancilla_Sfx2_Near(55); /* charge-ready cue, original sound asset */
     } else {
       bool charged = link_spin_attack_step_counter >= 48;
       Link_ResetSwordAndItemUsage();
+      link_spin_attack_step_counter = 0;
       if (charged)
         LinkPast_SpawnZeldaWandPulse(true);
     }
