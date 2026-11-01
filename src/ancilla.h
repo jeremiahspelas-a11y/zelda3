@@ -3,6 +3,9 @@
 #include "zelda_rtl.h"
 #include "sprite.h"
 
+/* LinkPast native feature hook: call only while the playable hero is Zelda. */
+void LinkPast_SetZeldaOrbitBoomerangEnabled(bool enabled);
+
 typedef struct CheckPlayerCollOut {
   uint16 r4, r6;
   uint16 r8, r10;
