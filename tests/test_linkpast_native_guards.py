@@ -24,6 +24,7 @@ required(anc, [
     "Ancilla_CheckSpriteCollision(k)",
     "g_linkpast_wand_ticks[j] = 0;",
     "g_linkpast_wand_ticks[k] = 0;",
+    "g_linkpast_wand_ticks[k] && !submodule_index",
 ], "native ancilla")
 
 assert anc.index("static const uint8 kAncilla_Pflags") < anc.index("static void LinkPast_SpawnWandBolt"), (
@@ -56,6 +57,7 @@ required(patch, [
     "ZeldaBrowserSwitchCharacter(int target)",
     "LinkPast_SetZeldaOrbitBoomerangEnabled(g_browser_zelda_skin)",
     "g_coop_spawned_zelda",
+    "if (flag_for_boomerang_in_place) return 25;",
 ], "native browser bridge")
 required(browser, [
     'id="linkpast-pair"',
