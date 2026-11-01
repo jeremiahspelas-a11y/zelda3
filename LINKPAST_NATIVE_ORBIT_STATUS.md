@@ -37,6 +37,22 @@ This work is committed on the **same** draft PR #1, not merged into master.
 
 **Safety limit:** the switching routine currently requires the heroes to be within 32 in-game pixels so it cannot blindly switch to an unloaded map region. HOLD can leave a hero farther away, but switching back requires getting near the companion until safe cross-room switching is implemented.
 
+## 2026-11-01 safety fix — native practice follower cannot advance story
+
+Original Zelda3's Zelda follower slot (type 1) also dispatches rescue-story events. The earlier HOLD/FOLLOW experiment reused that slot. Native `src/tagalong.c` now has an explicit opt-in practice flag that:
+- bypasses the `Follower_Main` message and scripted-drop branches for the paired practice follower;
+- suppresses `Follower_HandleTrigger` **inside `Follower_BasicMover`**, the second story-event dispatch path that would otherwise remain active;
+- retains original native sprite rendering, 20-point movement history, and HOLD/FOLLOW;
+- leaves genuine story followers untouched when practice mode is off.
+
+`browser_patch.py` enables the practice flag only after successful explicit pairing and clears it on LEAVE. `tests/test_linkpast_native_guards.py` checks both story-event guards. These are source-level protections and still need original-game runtime validation.
+
+### Build bottleneck
+
+Repository Actions listing shows no new workflow execution for these feature-branch commits. The required `browser-package.yml` has `workflow_dispatch` and C source/tests checks already configured; it cannot be marked passing until it actually runs. On an Android browser, open
+https://github.com/jeremiahspelas-a11y/zelda3/actions/workflows/browser-package.yml
+and select **Run workflow → branch: feature/linkpast-native-zelda-orbit → Run workflow**, if the control is available. If disabled, check the repository's Actions settings. Do not grant broad write permissions just to build; this CI requires contents-read.
+
 ## Remaining non-negotiable requirements
 
 - Fully **autonomous** opponent-targeting and sword/wand attacks by the inactive hero, with follow/stay/guard commands: current tagalong primarily follows and renders, **not combat AI**.
