@@ -1,6 +1,13 @@
 name: Native Zelda3 browser package (no game data)
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'browser/**'
+      - 'browser_patch.py'
+      - 'src/**'
+      - 'tests/test_linkpast_orbit.c'
+      - '.github/workflows/browser-package.yml'
   push:
     paths:
       - 'browser/**'
