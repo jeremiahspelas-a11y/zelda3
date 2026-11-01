@@ -1,6 +1,9 @@
 #pragma once
 #include "types.h"
 
+void LinkPast_SetCompanionHold(bool hold);
+bool LinkPast_GetCompanionHold(void);
+
 typedef struct TagalongMessageInfo {
   uint16 y, x, bit, msg, tagalong;
 } TagalongMessageInfo;
