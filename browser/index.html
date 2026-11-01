@@ -88,7 +88,7 @@ switchHeroButton.addEventListener('click',()=>{
    heroLabel.textContent=linkpastHero?'ZELDA · WAND':'LINK · SWORD';
    status.textContent=linkpastHero?'Native Zelda active: B casts wand burst, hold B to charge.':'Native Link active: original sword and shield.';
   }else{
-   const hints={21:'Pair the two characters first.',22:'Switch only during normal exploration.',23:'Stand still on safe ground, with no active item or attack, to switch.',24:'Move closer to your companion before switching.'};
+   const hints={21:'Pair the two characters first.',22:'Switch only during normal exploration.',23:'Stand still on safe ground, with no active item or attack, to switch.',24:'Move closer to your companion before switching.',25:'Catch the equipped boomerang before switching characters.'};
    status.textContent=hints[code]||('Native switch rejected (code '+code+').');
   }
  }catch(e){status.textContent='Switch unavailable: '+e.message;}
