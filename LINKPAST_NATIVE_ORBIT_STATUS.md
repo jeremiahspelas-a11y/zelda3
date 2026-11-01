@@ -41,7 +41,7 @@ This work is committed on the **same** draft PR #1, not merged into master.
 
 - Fully **autonomous** opponent-targeting and sword/wand attacks by the inactive hero, with follow/stay/guard commands: current tagalong primarily follows and renders, **not combat AI**.
 - Zelda timed ward and healing with an explicit magic economy; distinct Link shield vs Zelda ward.
-- Separate per-hero health, magic, damage and equipment ownership. The legacy inventory is still shared; the one equipped boomerang must be allocated exclusively to one hero.
+- **Runtime HP and MP snapshots exist**, but inactive hero damage simulation, per-hero equipment ownership, and persistent save serialization are not implemented. The legacy inventory is still shared; the one equipped boomerang must be allocated exclusively to one hero.
 - Validate player animation sprite bank changes, story follower conflicts, dungeon transitions, save/restore, boss/edge cases and simultaneous attacks.
 - Build native Wasm and physically verify on Android using the user's privately extracted Zelda3 game resources.
 
@@ -57,5 +57,7 @@ Command for the standalone C path test:
 ```sh
 cc -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all tests/test_linkpast_orbit.c -o /tmp/linkpast-orbit-test
 /tmp/linkpast-orbit-test
+cc -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all tests/test_linkpast_party.c -o /tmp/linkpast-party-test
+/tmp/linkpast-party-test
 python3 tests/test_linkpast_native_guards.py
 ```
