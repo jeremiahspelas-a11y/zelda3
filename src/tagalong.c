@@ -1,4 +1,12 @@
 #include "tagalong.h"
+
+/* Native companion order for LinkPast practice only.
+ * Unlike the story follower, the paired hero can wait at a fixed position.
+ * Trailing samples still update, so FOLLOW resumes through normal Zelda3.
+ */
+static bool g_linkpast_companion_hold;
+void LinkPast_SetCompanionHold(bool hold) { g_linkpast_companion_hold = hold; }
+bool LinkPast_GetCompanionHold(void) { return g_linkpast_companion_hold; }
 #include "sprite_main.h"
 #include "sprite.h"
 #include "zelda_rtl.h"
@@ -325,6 +333,11 @@ void Follower_CheckGameMode() {  // 89a0e1
         layerbits |= (draw_water_ripples_or_grass == 1) ? 0x80 : 0x40;
     }
     tagalong_layerbits[k] = layerbits;
+  }
+
+  if (g_linkpast_companion_hold && follower_indicator == 1) {
+    Tagalong_Draw(); /* no movement, but retain authentic pixel art */
+    return;
   }
 
   switch (follower_indicator) {
