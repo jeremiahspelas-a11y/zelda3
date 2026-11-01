@@ -1,10 +1,19 @@
 name: Native Zelda3 browser package (no game data)
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'browser/**'
+      - 'browser_patch.py'
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/browser-package.yml'
   push:
     paths:
       - 'browser/**'
       - 'browser_patch.py'
+      - 'src/**'
+      - 'tests/**'
       - '.github/workflows/browser-package.yml'
 permissions:
   contents: read
@@ -22,11 +31,34 @@ jobs:
         run: |
           python3 -m py_compile browser_patch.py browser/package_single_html.py browser/test_controls.py browser/rewrite_roles.py
           python3 browser/test_controls.py
+          python3 tests/test_linkpast_native_guards.py
           python3 - <<'PY'
           from pathlib import Path
           page=Path('browser/index.html').read_text()
           assert page.count('id="system-controls"') == 1, 'duplicate controls'
           assert 'ZeldaBrowserCoopStatus' in page
+          PY
+      - name: Verify deterministic native orbit math (eight throw directions)
+        run: |
+          cc -std=c11 -O2 -Wall -Wextra -Werror tests/test_linkpast_orbit.c -o /tmp/test_linkpast_orbit
+          /tmp/test_linkpast_orbit
+      - name: Validate independent native hero vital state
+        run: |
+          cc -std=c11 -O2 -Wall -Wextra -Werror -fsanitize=undefined -fno-sanitize-recover=all tests/test_linkpast_party.c -o /tmp/test_linkpast_party
+          /tmp/test_linkpast_party
+      - name: Check real LinkPast native source integration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          a = Path('src/ancilla.c').read_text()
+          p = Path('src/player.c').read_text()
+          b = Path('browser_patch.py').read_text()
+          h = Path('browser/index.html').read_text()
+          assert 'LinkPast_SpawnZeldaWandPulse' in a and 'Ancilla01_SomariaBullet' in a
+          assert 'LinkPast_OrbitPosition' in a and 'Boomerang_Draw(k)' in a
+          assert 'LinkPast_SpawnZeldaWandPulse(true)' in p and 'Link_CheckForSwordSwing' in p
+          assert 'ZeldaBrowserSwitchCharacter' in b and 'linkpast-switch' in h
+          print('PASS: original engine remains authoritative for gameplay and pixels')
           PY
       - name: Install Emscripten SDK
         uses: mymindstorm/setup-emsdk@v14

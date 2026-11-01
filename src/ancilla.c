@@ -11,6 +11,39 @@
 #include "dungeon.h"
 #include "sprite_main.h"
 #include "assets.h"
+#include "linkpast_orbit.h"
+
+/* Per-projectile state, isolated from original SNES RAM and save layout. */
+typedef struct LinkPastOrbitState {
+  uint8 enabled, phase, tick, start_angle;
+  uint16 center_x, center_y;
+} LinkPastOrbitState;
+static LinkPastOrbitState g_linkpast_boomerang_orbit[10];
+static bool g_linkpast_orbit_enabled = false;
+
+/* Set by the future playable-character controller: true ONLY for Zelda. */
+void LinkPast_SetZeldaOrbitBoomerangEnabled(bool enabled) {
+  g_linkpast_orbit_enabled = enabled;
+}
+
+/* Native Zelda wand: short-reaching Sorceress sweep using original Somaria
+ * effect art and collision, not Link's sword/sword-beam or Fire/Ice Rod.
+ * Basic strike = one 14-frame, ~42-pixel burst.
+ * Fully charged strike = three parallel bursts, same range and recovery.
+ */
+static uint8 g_linkpast_wand_ticks[10];
+
+static void LinkPast_BoomerangEnterOrbit(int k) {
+  LinkPastOrbitState *o = &g_linkpast_boomerang_orbit[k];
+  int dx, dy;
+  o->phase = 1;
+  o->tick = 0;
+  o->start_angle = LinkPast_OrbitStartAngle(ancilla_x_vel[k], ancilla_y_vel[k]);
+  LinkPast_OrbitOffset(o->start_angle, &dx, &dy);
+  o->center_x = (uint16)(Ancilla_GetX(k) - dx);
+  o->center_y = (uint16)(Ancilla_GetY(k) - dy);
+  ancilla_K[k] = 0;
+}
 
 static const uint8 kAncilla_Pflags[68] = {
   0,    8,  0xc, 0x10, 0x10,    4, 0x10, 0x18,    8,    8,    8,    0, 0x14, 0, 0x10, 0x28,
@@ -19,6 +52,42 @@ static const uint8 kAncilla_Pflags[68] = {
   0x10, 0x10,    4,    0, 0x80, 0x10,    4, 0x30, 0x14, 0x10,    0, 0x10,    0, 0,    8,    0,
   0x10,    8, 0x78, 0x80,
 };
+
+/* The original ancilla sprite-flag table must be declared before wand spawn. */
+static void LinkPast_SpawnWandBolt(int sideways) {
+  static const int8 kXOff[4] = {0, 0, -12, 12};
+  static const int8 kYOff[4] = {-12, 12, 0, 0};
+  static const int8 kXVel[4] = {0, 0, -48, 48};
+  static const int8 kYVel[4] = {-48, 48, 0, 0};
+  int k = Ancilla_AllocInit(1, 4);
+  if (k < 0) return;
+  int d = (link_direction_facing >> 1) & 3;
+  int sx = (d < 2) ? sideways : 0;
+  int sy = (d >= 2) ? sideways : 0;
+  ancilla_type[k] = 1;
+  ancilla_numspr[k] = kAncilla_Pflags[1];
+  ancilla_step[k] = 4;
+  ancilla_timer[k] = 3;
+  ancilla_item_to_link[k] = 0;
+  ancilla_objprio[k] = 0;
+  ancilla_dir[k] = d;
+  ancilla_x_vel[k] = kXVel[d];
+  ancilla_y_vel[k] = kYVel[d];
+  ancilla_floor[k] = link_is_on_lower_level;
+  ancilla_floor2[k] = link_is_on_lower_level_mirror;
+  Ancilla_SetXY(k, link_x_coord + kXOff[d] + sx,
+                  link_y_coord + kYOff[d] + sy);
+  g_linkpast_wand_ticks[k] = 1;
+}
+
+void LinkPast_SpawnZeldaWandPulse(bool charged) {
+  LinkPast_SpawnWandBolt(0);
+  if (charged) {
+    LinkPast_SpawnWandBolt(-9);
+    LinkPast_SpawnWandBolt(9);
+  }
+}
+
 static const int8 kFireRod_Xvel2[12] = {0, 0, -40, 40, 0, 0, -48, 48, 0, 0, -64, 64};
 static const int8 kFireRod_Yvel2[12] = {-40, 40, 0, 0, -48, 48, 0, 0, -64, 64, 0, 0};
 static const uint8 kTagalongLayerBits[4] = {0x20, 0x10, 0x30, 0x20};
@@ -740,6 +809,18 @@ void AncillaAdd_IceRodSparkle(int k) {  // 8884c8
 void Ancilla01_SomariaBullet(int k) {  // 88851b
   static const uint8 kSomarianBlast_Mask[6] = {7, 3, 1, 0, 0, 0};
 
+  /* Zelda's own wand projectiles expire at close range. Other Somaria
+   * bullets keep all their normal behaviors. */
+  if (g_linkpast_wand_ticks[k] && !submodule_index) {
+    if (++g_linkpast_wand_ticks[k] >= 15) {
+      g_linkpast_wand_ticks[k] = 0;
+      ancilla_type[k] = 4;
+      ancilla_timer[k] = 7;
+      ancilla_numspr[k] = 16;
+      return;
+    }
+  }
+
   if (!submodule_index) {
     if (!(frame_counter & kSomarianBlast_Mask[ancilla_step[k]])) {
       Ancilla_MoveX(k);
@@ -753,12 +834,15 @@ void Ancilla01_SomariaBullet(int k) {  // 88851b
       ancilla_step[k] = a;
     }
     if (Ancilla_CheckSpriteCollision(k) >= 0 || Ancilla_CheckTileCollision_staggered(k)) {
+      g_linkpast_wand_ticks[k] = 0;
       ancilla_type[k] = 4;
       ancilla_timer[k] = 7;
       ancilla_numspr[k] = 16;
     }
   }
   SomarianBlast_Draw(k);
+  if (ancilla_type[k] != 1)
+    g_linkpast_wand_ticks[k] = 0;
 }
 
 bool Ancilla_ReturnIfOutsideBounds(int k, AncillaOamInfo *info) {  // 88862a
@@ -1286,6 +1370,27 @@ void Ancilla05_Boomerang(int k) {  // 8890fc
   if (ancilla_G[k] && !(frame_counter & 1))
     AncillaAdd_SwordChargeSparkle(k);
 
+  /* Native Zelda-only orbit: keep the original boomerang sprite and collision. */
+  LinkPastOrbitState *orbit = &g_linkpast_boomerang_orbit[k];
+  if (orbit->enabled && orbit->phase == 1 && !ancilla_item_to_link[k]) {
+    uint16 x, y;
+    LinkPast_OrbitPosition(orbit->center_x, orbit->center_y,
+                           orbit->start_angle, orbit->tick, &x, &y);
+    Ancilla_SetXY(k, x, y);
+    Ancilla_CheckSpriteCollision(k);
+    /* Geometry, not enemy contact, can interrupt the area-control orbit. */
+    if (Ancilla_CheckTileCollision(k)) {
+      AncillaAdd_BoomerangWallClink(k);
+      Ancilla_Sfx2_Pan(k, (ancilla_tile_attr[k] == 0xf0) ? 6 : 5);
+      ancilla_item_to_link[k] = 1;
+      orbit->phase = 2;
+    } else if (Boomerang_ScreenEdge(k) || ++orbit->tick >= kLinkPastOrbitFrames) {
+      ancilla_item_to_link[k] = 1;
+      orbit->phase = 2;
+    }
+    goto exit_and_draw;
+  }
+
   if (ancilla_item_to_link[k]) {
     if (ancilla_K[k])
       ancilla_K[k]++;
@@ -1308,14 +1413,19 @@ void Ancilla05_Boomerang(int k) {  // 8890fc
   hit_spr = Ancilla_CheckSpriteCollision(k);
 
   if (!ancilla_item_to_link[k]) {
-    if (hit_spr >= 0) {
+    if (hit_spr >= 0 && !orbit->enabled) {
       ancilla_item_to_link[k] ^= 1;
     } else if (Ancilla_CheckTileCollision(k)) {
       AncillaAdd_BoomerangWallClink(k);
       Ancilla_Sfx2_Pan(k, (ancilla_tile_attr[k] == 0xf0) ? 6 : 5);
       ancilla_item_to_link[k] ^= 1;
-    } else if (Boomerang_ScreenEdge(k) || --ancilla_step[k] == 0) {
+    } else if (Boomerang_ScreenEdge(k)) {
       ancilla_item_to_link[k] ^= 1;
+    } else if (--ancilla_step[k] == 0) {
+      if (orbit->enabled)
+        LinkPast_BoomerangEnterOrbit(k);
+      else
+        ancilla_item_to_link[k] ^= 1;
     } else {
       if (ancilla_step[k] < 5)
         ancilla_K[k]--;
@@ -1357,6 +1467,8 @@ void Boomerang_StopOffScreen(int k) {  // 8892ab
 }
 
 void Boomerang_Terminate(int k) {  // 8892f5
+  g_linkpast_boomerang_orbit[k].enabled = 0;
+  g_linkpast_boomerang_orbit[k].phase = 0;
   ancilla_type[k] = 0;
   flag_for_boomerang_in_place = 0;
   if (link_item_in_hand & 0x80) {
@@ -5818,6 +5930,9 @@ uint8 AncillaAdd_Boomerang(uint8 a, uint8 y) {  // 89820f
   int k = Ancilla_AddAncilla(a, y);
   if (k < 0)
     return 0;
+  g_linkpast_boomerang_orbit[k].enabled = g_linkpast_orbit_enabled;
+  g_linkpast_boomerang_orbit[k].phase = 0;
+  g_linkpast_boomerang_orbit[k].tick = 0;
   ancilla_aux_timer[k] = 0;
   ancilla_item_to_link[k] = 0;
   ancilla_K[k] = 0;
@@ -5826,7 +5941,7 @@ uint8 AncillaAdd_Boomerang(uint8 a, uint8 y) {  // 89820f
   flag_for_boomerang_in_place = 1;
   int j = link_item_boomerang - 1;
   ancilla_G[k] = j;
-  ancilla_step[k] = kBoomerang_Tab1[j];
+  ancilla_step[k] = g_linkpast_boomerang_orbit[k].enabled ? kLinkPastOrbitOutboundFrames : kBoomerang_Tab1[j];
   ancilla_arr3[k] = kBoomerang_Tab2[j];
 
   int s = ancilla_G[k] * 2 + ((joypad1H_last & 0xc) && (joypad1H_last & 3) ? 1 : 0);
@@ -6988,8 +7103,10 @@ int Ancilla_AllocInit(uint8 type, uint8 limit) {  // 8ff577
 
   // Try to reuse an empty ancilla slot
   for (int j = (type == 7 || type == 8) ? limit : 4; j >= 0; j--) {
-    if (ancilla_type[j] == 0)
+    if (ancilla_type[j] == 0) {
+      g_linkpast_wand_ticks[j] = 0; /* never inherit a previous wand's TTL */
       return j;
+    }
   }
   int k = ancilla_alloc_rotate;
   do {
@@ -6999,6 +7116,7 @@ int Ancilla_AllocInit(uint8 type, uint8 limit) {  // 8ff577
     // reuse slots for sparkles or arrows in wall
     if (old_type == 0x3c || old_type == 0x13 || old_type == 0xa) {
       ancilla_alloc_rotate = k;
+      g_linkpast_wand_ticks[k] = 0;
       return k;
     }
   } while (k != 0);

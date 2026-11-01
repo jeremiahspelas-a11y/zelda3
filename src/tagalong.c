@@ -1,4 +1,19 @@
 #include "tagalong.h"
+
+/* Native companion order for LinkPast practice only.
+ * Unlike the story follower, the paired hero can wait at a fixed position.
+ * Trailing samples still update, so FOLLOW resumes through normal Zelda3.
+ */
+static bool g_linkpast_companion_hold;
+static bool g_linkpast_companion_practice;
+void LinkPast_SetCompanionPractice(bool enabled) {
+  g_linkpast_companion_practice = enabled;
+  if (!enabled) g_linkpast_companion_hold = false;
+}
+void LinkPast_SetCompanionHold(bool hold) {
+  if (g_linkpast_companion_practice) g_linkpast_companion_hold = hold;
+}
+bool LinkPast_GetCompanionHold(void) { return g_linkpast_companion_hold; }
 #include "sprite_main.h"
 #include "sprite.h"
 #include "zelda_rtl.h"
@@ -230,8 +245,19 @@ void Sprite_BecomeFollower(int k) {  // 899f39
 }
 
 void Follower_Main() {  // 899fc4
+  /* If native story logic removes/replaces the follower, never let a stale
+   * practice flag affect a later real Zelda rescue follower. */
+  if (g_linkpast_companion_practice && follower_indicator != 1)
+    LinkPast_SetCompanionPractice(false);
   if (!follower_indicator)
     return;
+  /* Explicitly paired LinkPast hero is NOT the Zelda rescue story follower.
+   * Never process timed follower messages, scripted drops, or quest triggers.
+   * Keep using native path history, collisions and original Zelda/Link OAM. */
+  if (g_linkpast_companion_practice && follower_indicator == 1) {
+    Follower_CheckGameMode();
+    return;
+  }
   if (follower_indicator == 0xe) {
     Follower_HandleTrigger();
     return;
@@ -327,6 +353,11 @@ void Follower_CheckGameMode() {  // 89a0e1
     tagalong_layerbits[k] = layerbits;
   }
 
+  if (g_linkpast_companion_practice && g_linkpast_companion_hold && follower_indicator == 1) {
+    Tagalong_Draw(); /* no movement, but retain authentic pixel art */
+    return;
+  }
+
   switch (follower_indicator) {
   case 2: case 4:
     Follower_OldMan();
@@ -350,7 +381,10 @@ void Follower_BasicMover() {  // 89a197
     return;
   }
 
-  Follower_HandleTrigger();
+  /* Story trigger dispatch is also called from BasicMover itself. Keep it
+   * disabled for the practice companion; preserve it for every story NPC. */
+  if (!g_linkpast_companion_practice)
+    Follower_HandleTrigger();
 
   if (follower_indicator == 10 && link_auxiliary_state && countdown_for_blink) {
     int k = tagalong_var2 + 1 == 20 ? 0 : tagalong_var2 + 1;
