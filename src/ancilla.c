@@ -839,6 +839,8 @@ void Ancilla01_SomariaBullet(int k) {  // 88851b
     }
   }
   SomarianBlast_Draw(k);
+  if (ancilla_type[k] != 1)
+    g_linkpast_wand_ticks[k] = 0;
 }
 
 bool Ancilla_ReturnIfOutsideBounds(int k, AncillaOamInfo *info) {  // 88862a
