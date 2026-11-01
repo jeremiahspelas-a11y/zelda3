@@ -33,6 +33,27 @@ void LinkPast_SetZeldaOrbitBoomerangEnabled(bool enabled) {
  */
 static uint8 g_linkpast_wand_ticks[10];
 
+static void LinkPast_BoomerangEnterOrbit(int k) {
+  LinkPastOrbitState *o = &g_linkpast_boomerang_orbit[k];
+  int dx, dy;
+  o->phase = 1;
+  o->tick = 0;
+  o->start_angle = LinkPast_OrbitStartAngle(ancilla_x_vel[k], ancilla_y_vel[k]);
+  LinkPast_OrbitOffset(o->start_angle, &dx, &dy);
+  o->center_x = (uint16)(Ancilla_GetX(k) - dx);
+  o->center_y = (uint16)(Ancilla_GetY(k) - dy);
+  ancilla_K[k] = 0;
+}
+
+static const uint8 kAncilla_Pflags[68] = {
+  0,    8,  0xc, 0x10, 0x10,    4, 0x10, 0x18,    8,    8,    8,    0, 0x14, 0, 0x10, 0x28,
+  0x18, 0x10, 0x10, 0x10, 0x10,  0xc,    8,    8, 0x50,    0, 0x10,    8, 0x40, 0,  0xc, 0x24,
+  0x10,  0xc,    8, 0x10, 0x10,    4,  0xc, 0x1c,    0, 0x10, 0x14, 0x14, 0x10, 8, 0x20, 0x10,
+  0x10, 0x10,    4,    0, 0x80, 0x10,    4, 0x30, 0x14, 0x10,    0, 0x10,    0, 0,    8,    0,
+  0x10,    8, 0x78, 0x80,
+};
+
+/* The original ancilla sprite-flag table must be declared before wand spawn. */
 static void LinkPast_SpawnWandBolt(int sideways) {
   static const int8 kXOff[4] = {0, 0, -12, 12};
   static const int8 kYOff[4] = {-12, 12, 0, 0};
@@ -67,25 +88,6 @@ void LinkPast_SpawnZeldaWandPulse(bool charged) {
   }
 }
 
-static void LinkPast_BoomerangEnterOrbit(int k) {
-  LinkPastOrbitState *o = &g_linkpast_boomerang_orbit[k];
-  int dx, dy;
-  o->phase = 1;
-  o->tick = 0;
-  o->start_angle = LinkPast_OrbitStartAngle(ancilla_x_vel[k], ancilla_y_vel[k]);
-  LinkPast_OrbitOffset(o->start_angle, &dx, &dy);
-  o->center_x = (uint16)(Ancilla_GetX(k) - dx);
-  o->center_y = (uint16)(Ancilla_GetY(k) - dy);
-  ancilla_K[k] = 0;
-}
-
-static const uint8 kAncilla_Pflags[68] = {
-  0,    8,  0xc, 0x10, 0x10,    4, 0x10, 0x18,    8,    8,    8,    0, 0x14, 0, 0x10, 0x28,
-  0x18, 0x10, 0x10, 0x10, 0x10,  0xc,    8,    8, 0x50,    0, 0x10,    8, 0x40, 0,  0xc, 0x24,
-  0x10,  0xc,    8, 0x10, 0x10,    4,  0xc, 0x1c,    0, 0x10, 0x14, 0x14, 0x10, 8, 0x20, 0x10,
-  0x10, 0x10,    4,    0, 0x80, 0x10,    4, 0x30, 0x14, 0x10,    0, 0x10,    0, 0,    8,    0,
-  0x10,    8, 0x78, 0x80,
-};
 static const int8 kFireRod_Xvel2[12] = {0, 0, -40, 40, 0, 0, -48, 48, 0, 0, -64, 64};
 static const int8 kFireRod_Yvel2[12] = {-40, 40, 0, 0, -48, 48, 0, 0, -64, 64, 0, 0};
 static const uint8 kTagalongLayerBits[4] = {0x20, 0x10, 0x30, 0x20};
@@ -7101,8 +7103,10 @@ int Ancilla_AllocInit(uint8 type, uint8 limit) {  // 8ff577
 
   // Try to reuse an empty ancilla slot
   for (int j = (type == 7 || type == 8) ? limit : 4; j >= 0; j--) {
-    if (ancilla_type[j] == 0)
+    if (ancilla_type[j] == 0) {
+      g_linkpast_wand_ticks[j] = 0; /* never inherit a previous wand's TTL */
       return j;
+    }
   }
   int k = ancilla_alloc_rotate;
   do {
@@ -7112,6 +7116,7 @@ int Ancilla_AllocInit(uint8 type, uint8 limit) {  // 8ff577
     // reuse slots for sparkles or arrows in wall
     if (old_type == 0x3c || old_type == 0x13 || old_type == 0xa) {
       ancilla_alloc_rotate = k;
+      g_linkpast_wand_ticks[k] = 0;
       return k;
     }
   } while (k != 0);
