@@ -103,6 +103,7 @@ def patch(text):
         '      link_auxiliary_state || player_near_pit_state > 1 || link_state_bits ||\n'
         '      link_item_in_hand || link_position_mode || link_is_running) return 23;\n'
         '  if ((int)g_browser_zelda_skin == target) return target ? 11 : 10;\n'
+        '  if (flag_for_boomerang_in_place) return 25; /* prevent midair owner swap */\n'
         '  int j = tagalong_var2;\n'
         '  uint16 oldx = link_x_coord, oldy = link_y_coord;\n'
         '  uint16 fx = tagalong_x_lo[j] | tagalong_x_hi[j] << 8;\n'
