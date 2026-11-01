@@ -245,6 +245,10 @@ void Sprite_BecomeFollower(int k) {  // 899f39
 }
 
 void Follower_Main() {  // 899fc4
+  /* If native story logic removes/replaces the follower, never let a stale
+   * practice flag affect a later real Zelda rescue follower. */
+  if (g_linkpast_companion_practice && follower_indicator != 1)
+    LinkPast_SetCompanionPractice(false);
   if (!follower_indicator)
     return;
   /* Explicitly paired LinkPast hero is NOT the Zelda rescue story follower.
